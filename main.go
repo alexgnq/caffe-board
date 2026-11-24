@@ -41,6 +41,13 @@ var menu = []agent{
 	{"human", "Just me", "#b98a5a"},
 }
 
+// apps are the editors and agent apps caffe serves a latte. They show on a
+// bar but are not on the order menu.
+var apps = []agent{
+	{"vscode", "VS Code", "#28bed2"},
+	{"t3", "T3 Code", "#8a8a96"},
+}
+
 func findAgent(id string) (agent, bool) {
 	for _, item := range menu {
 		if item.ID == id {
@@ -67,11 +74,28 @@ type tally struct {
 	Count int
 }
 
-// sip is one session at a laptop's bar, as caffe reports it.
+// sip is one session or open app at a laptop's bar, as caffe reports it.
 type sip struct {
 	Agent agent
+	App   bool
 	State string
 	For   string
+}
+
+// findDrink looks up what a bar can serve: any agent, or an app.
+func findDrink(id string) (agent, bool) {
+	if id == "human" {
+		return agent{}, false
+	}
+	if item, ok := findAgent(id); ok {
+		return item, true
+	}
+	for _, item := range apps {
+		if item.ID == id {
+			return item, true
+		}
+	}
+	return agent{}, false
 }
 
 // bar is a laptop running caffe with the board turned on.
@@ -329,6 +353,7 @@ func loadPage(ctx context.Context, data *pageData) error {
 
 // stored is a session as the bars table keeps it.
 type stored struct {
+	Kind  string    `json:"kind,omitempty"`
 	Agent string    `json:"agent"`
 	State string    `json:"state"`
 	Since time.Time `json:"since"`
@@ -353,19 +378,37 @@ func loadBars(ctx context.Context, data *pageData) error {
 			return err
 		}
 		for _, s := range sessions {
-			a, _ := findAgent(s.Agent)
-			item.Sessions = append(item.Sessions, sip{a, s.State, span(time.Since(s.Since))})
+			a, _ := findDrink(s.Agent)
+			item.Sessions = append(item.Sessions, sip{a, s.Kind == "app", s.State, span(time.Since(s.Since))})
 		}
 		data.Bars = append(data.Bars, item)
 	}
 	return rows.Err()
 }
 
-var states = map[string]bool{"brewing": true, "ready": true, "idle": true, "cold": true}
+var (
+	sessionStates = map[string]bool{"brewing": true, "ready": true, "idle": true, "cold": true}
+	appStates     = map[string]bool{"busy": true, "open": true}
+)
 
-// report is what caffe sends: each session's agent, state, and seconds in it.
+// valid says whether a bar can show this: an agent session in one of its
+// states, or an open app, busy or open.
+func valid(kind, id, state string) bool {
+	switch kind {
+	case "":
+		_, ok := findAgent(id)
+		return ok && id != "human" && sessionStates[state]
+	case "app":
+		_, ok := findDrink(id)
+		return ok && appStates[state]
+	}
+	return false
+}
+
+// report is what caffe sends: each session or app, its state, and seconds in it.
 type report struct {
 	Sessions []struct {
+		Kind  string  `json:"kind"`
 		Agent string  `json:"agent"`
 		State string  `json:"state"`
 		Since float64 `json:"since"`
@@ -395,11 +438,11 @@ func handlePutBar(writer http.ResponseWriter, request *http.Request) {
 	now := time.Now()
 	sessions := []stored{}
 	for _, s := range body.Sessions {
-		if _, ok := findAgent(s.Agent); !ok || !states[s.State] || s.Agent == "human" || len(sessions) == 24 {
+		if !valid(s.Kind, s.Agent, s.State) || len(sessions) == 24 {
 			continue
 		}
 		since := now.Add(-time.Duration(max(s.Since, 0) * float64(time.Second)))
-		sessions = append(sessions, stored{s.Agent, s.State, since})
+		sessions = append(sessions, stored{s.Kind, s.Agent, s.State, since})
 	}
 	raw, _ := json.Marshal(sessions)
 	if _, err := db.ExecContext(request.Context(),
