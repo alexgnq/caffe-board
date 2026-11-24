@@ -5,8 +5,10 @@ package main
 
 import (
 	"context"
+	"crypto/subtle"
 	"database/sql"
 	"embed"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"hash/fnv"
@@ -62,8 +64,22 @@ type tally struct {
 	Count int
 }
 
+// sip is one session at a laptop's bar, as caffe reports it.
+type sip struct {
+	Agent agent
+	State string
+	For   string
+}
+
+// bar is a laptop running caffe with the board turned on.
+type bar struct {
+	Name     string
+	Sessions []sip
+}
+
 type pageData struct {
 	Menu     []agent
+	Bars     []bar
 	Cups     []cup
 	Tally    []tally
 	Total    int
@@ -81,7 +97,12 @@ var (
 	version  = envOr("APP_VERSION", "1.0.0")
 	podName  = envOr("POD_NAME", hostname())
 	listenOn = ":" + envOr("PORT", "8080")
+	// boardToken, when set, is the bearer token caffe must send to update a bar.
+	boardToken = os.Getenv("BOARD_TOKEN")
 )
+
+// barTimeout is how long a bar stays open after caffe last reported.
+const barTimeout = time.Minute
 
 func envOr(key, fallback string) string {
 	if value := os.Getenv(key); value != "" {
@@ -135,6 +156,11 @@ CREATE TABLE IF NOT EXISTS cups (
   note    TEXT NOT NULL DEFAULT '',
   pod     TEXT NOT NULL,
   created TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS bars (
+  name     TEXT PRIMARY KEY,
+  sessions JSONB NOT NULL,
+  updated  TIMESTAMPTZ NOT NULL DEFAULT now()
 );`
 
 // schemaLock serialises the schema setup when several replicas start at once;
@@ -182,6 +208,17 @@ func connect(ctx context.Context) error {
 		time.Sleep(2 * time.Second)
 	}
 	return fmt.Errorf("database unreachable after 30 attempts: %w", lastErr)
+}
+
+func span(d time.Duration) string {
+	switch {
+	case d < time.Minute:
+		return "just now"
+	case d < time.Hour:
+		return fmt.Sprintf("%d min", int(d.Minutes()))
+	default:
+		return fmt.Sprintf("%d h", int(d.Hours()))
+	}
 }
 
 func ago(t time.Time) string {
@@ -243,7 +280,110 @@ func loadPage(ctx context.Context, data *pageData) error {
 		data.Tally = append(data.Tally, tally{item, counts[item.ID]})
 	}
 
-	return db.QueryRowContext(ctx, `SELECT count(DISTINCT pod) FROM cups`).Scan(&data.Pods)
+	if err := db.QueryRowContext(ctx, `SELECT count(DISTINCT pod) FROM cups`).Scan(&data.Pods); err != nil {
+		return err
+	}
+	return loadBars(ctx, data)
+}
+
+// stored is a session as the bars table keeps it.
+type stored struct {
+	Agent string    `json:"agent"`
+	State string    `json:"state"`
+	Since time.Time `json:"since"`
+}
+
+func loadBars(ctx context.Context, data *pageData) error {
+	rows, err := db.QueryContext(ctx,
+		`SELECT name, sessions FROM bars WHERE updated > now() - $1::interval ORDER BY name`,
+		fmt.Sprintf("%d seconds", int(barTimeout.Seconds())))
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var item bar
+		var raw []byte
+		if err := rows.Scan(&item.Name, &raw); err != nil {
+			return err
+		}
+		var sessions []stored
+		if err := json.Unmarshal(raw, &sessions); err != nil {
+			return err
+		}
+		for _, s := range sessions {
+			a, _ := findAgent(s.Agent)
+			item.Sessions = append(item.Sessions, sip{a, s.State, span(time.Since(s.Since))})
+		}
+		data.Bars = append(data.Bars, item)
+	}
+	return rows.Err()
+}
+
+var states = map[string]bool{"brewing": true, "ready": true, "idle": true, "cold": true}
+
+// report is what caffe sends: each session's agent, state, and seconds in it.
+type report struct {
+	Sessions []struct {
+		Agent string  `json:"agent"`
+		State string  `json:"state"`
+		Since float64 `json:"since"`
+	} `json:"sessions"`
+}
+
+func authorized(request *http.Request) bool {
+	if boardToken == "" {
+		return true
+	}
+	got := strings.TrimPrefix(request.Header.Get("Authorization"), "Bearer ")
+	return subtle.ConstantTimeCompare([]byte(got), []byte(boardToken)) == 1
+}
+
+// handlePutBar replaces a bar's sessions with caffe's latest snapshot.
+func handlePutBar(writer http.ResponseWriter, request *http.Request) {
+	if !authorized(request) {
+		http.Error(writer, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	name := clip(request.PathValue("name"), 40)
+	var body report
+	if err := json.NewDecoder(http.MaxBytesReader(writer, request.Body, 64<<10)).Decode(&body); err != nil || name == "" {
+		http.Error(writer, "bad request", http.StatusBadRequest)
+		return
+	}
+	now := time.Now()
+	sessions := []stored{}
+	for _, s := range body.Sessions {
+		if _, ok := findAgent(s.Agent); !ok || !states[s.State] || s.Agent == "human" || len(sessions) == 24 {
+			continue
+		}
+		since := now.Add(-time.Duration(max(s.Since, 0) * float64(time.Second)))
+		sessions = append(sessions, stored{s.Agent, s.State, since})
+	}
+	raw, _ := json.Marshal(sessions)
+	if _, err := db.ExecContext(request.Context(),
+		`INSERT INTO bars (name, sessions, updated) VALUES ($1, $2, now())
+		 ON CONFLICT (name) DO UPDATE SET sessions = EXCLUDED.sessions, updated = now()`,
+		name, raw); err != nil {
+		log.Printf("bar update failed: %v", err)
+		http.Error(writer, "database error", http.StatusInternalServerError)
+		return
+	}
+	writer.WriteHeader(http.StatusNoContent)
+}
+
+// handleDeleteBar closes a bar when caffe quits.
+func handleDeleteBar(writer http.ResponseWriter, request *http.Request) {
+	if !authorized(request) {
+		http.Error(writer, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	if _, err := db.ExecContext(request.Context(),
+		`DELETE FROM bars WHERE name = $1`, clip(request.PathValue("name"), 40)); err != nil {
+		http.Error(writer, "database error", http.StatusInternalServerError)
+		return
+	}
+	writer.WriteHeader(http.StatusNoContent)
 }
 
 func clip(value string, limit int) string {
@@ -319,6 +459,8 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", handleIndex)
 	mux.HandleFunc("/healthz", handleHealthz)
+	mux.HandleFunc("PUT /api/bars/{name}", handlePutBar)
+	mux.HandleFunc("DELETE /api/bars/{name}", handleDeleteBar)
 
 	server := &http.Server{
 		Addr:              listenOn,

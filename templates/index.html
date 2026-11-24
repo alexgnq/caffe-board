@@ -64,6 +64,19 @@
   .cup .who { font-weight: 600; overflow-wrap: anywhere; }
   .cup .note { color: var(--muted); font-size: 14px; overflow-wrap: anywhere; }
   .cup .meta { display: inline-flex; gap: 6px; align-items: center; color: var(--muted); font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .bars { display: grid; gap: 14px; }
+  .bars h2 { margin: 0; font-size: 1rem; display: flex; gap: 8px; align-items: center; }
+  .bars h2::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 0 4px color-mix(in srgb, #22c55e 25%, transparent); }
+  .bar { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: end; padding-top: 12px; border-top: 1px solid var(--line); }
+  .bar .who { width: 100%; font-weight: 600; }
+  .sip { display: grid; justify-items: center; font: 11px ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); }
+  .sip svg { width: 48px; height: 46px; overflow: visible; }
+  .sip.cold svg { opacity: .45; filter: grayscale(.6); }
+  .sip .steam { fill: none; stroke: var(--muted); stroke-width: 1.6; stroke-linecap: round; opacity: 0; }
+  .sip.brewing .steam { animation: steam 2.4s ease-in-out infinite; }
+  .sip.brewing .steam + .steam { animation-delay: 1.2s; }
+  @keyframes steam { 0% { opacity: 0; transform: translateY(4px); } 40% { opacity: .8; } 100% { opacity: 0; transform: translateY(-6px); } }
+  @media (prefers-reduced-motion: reduce) { .sip.brewing .steam { animation: none; opacity: .7; } }
   .empty { color: var(--muted); text-align: center; padding: 32px 0; }
   .error { color: #c2410c; font-family: ui-monospace, monospace; font-size: 13px; }
   footer { margin-top: 32px; color: var(--muted); font-size: 13px; text-align: center; }
@@ -80,7 +93,7 @@
       <h1>☕ caffe <span>board</span></h1>
       <p class="sub">Order a cup for the coding agent you work with.</p>
     </div>
-    <div class="pod" style="--tint: {{.PodTint}}" title="The pod that answered this request">
+    <div class="pod" id="pod" style="--tint: {{.PodTint}}" title="The pod that answered this request">
       <span class="dot"></span>poured by {{.Pod}}
     </div>
   </header>
@@ -103,6 +116,36 @@
       </div>
     </form>
   </section>
+
+  <div id="live">
+  {{if .Bars}}
+  <section class="panel bars" aria-label="Live bars">
+    <h2>Live bars</h2>
+    {{range .Bars}}
+    <div class="bar">
+      <div class="who">{{.Name}}</div>
+      {{range .Sessions}}
+      <div class="sip {{.State}}" title="{{.Agent.Name}}, {{.State}} for {{.For}}">
+        <svg viewBox="0 0 48 46" aria-hidden="true">
+          <path class="steam" d="M18 10 q-3 -4 0 -8"/>
+          <path class="steam" d="M26 10 q3 -4 0 -8"/>
+          <ellipse cx="22" cy="40" rx="19" ry="4" fill="var(--saucer)"/>
+          {{if eq .State "ready"}}<rect x="34" y="35" width="10" height="4" rx="1.5" fill="#d6a060"/>{{end}}
+          <path d="M37 18 q8 0 8 7 t-9 7" fill="none" stroke="var(--cream)" stroke-width="3"/>
+          <path d="M7 12 h30 l-3 20 q-.6 5 -5 5 h-14 q-4.4 0 -5 -5 z" fill="var(--cream)"/>
+          <path d="M8.4 21 h27.2 l-.9 6 h-25.4 z" fill="{{.Agent.Color}}"/>
+          <ellipse cx="22" cy="12" rx="15" ry="3" fill="var(--coffee)"/>
+        </svg>
+        <span>{{.Agent.Name}}</span>
+        <span>{{.State}}</span>
+      </div>
+      {{else}}
+      <span class="sip">The table is clear.</span>
+      {{end}}
+    </div>
+    {{end}}
+  </section>
+  {{end}}
 
   <section class="panel tally" aria-label="Cups per agent">
     <span><b>{{.Total}}</b> cups from <b>{{.Pods}}</b> {{if eq .Pods 1}}pod{{else}}pods{{end}}</span>
@@ -130,8 +173,24 @@
     <p class="empty">The table is empty. Be the first to order.</p>
     {{end}}
   </section>
+  </div>
 
   <footer>caffe board {{.Version}} · database {{.DBStatus}}</footer>
 </main>
+<script>
+  // Keep the board live without touching the order form.
+  setInterval(async () => {
+    if (document.hidden) return;
+    try {
+      const response = await fetch("/", { cache: "no-store" });
+      if (!response.ok) return;
+      const page = new DOMParser().parseFromString(await response.text(), "text/html");
+      for (const id of ["pod", "live"]) {
+        const fresh = page.getElementById(id);
+        if (fresh) document.getElementById(id).replaceWith(fresh);
+      }
+    } catch {}
+  }, 10000);
+</script>
 </body>
 </html>
