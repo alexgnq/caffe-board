@@ -2,195 +2,445 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>caffe board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,700;12..96,800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
 <style>
+  /* Layout: one column. A café counter with the newest cups and the cat, then orders beside the mix and the baristas (pods). */
   :root {
-    --bg: #f6f1ea; --card: #fffdf9; --ink: #2a2320; --muted: #7d716a;
-    --line: #e6ddd2; --saucer: #eee9e0; --cream: #f8ebd3; --coffee: #3a2216;
-    --accent: #b9733f;
+    --bg: #eceeed;
+    --surface: #f8f9f8;
+    --ink: #151817;
+    --muted: #5d6664;
+    --line: #d3d8d6;
+    --counter: #b4bcb9;
+    --porcelain: #ffffff;
+    --porcelain-edge: #b9c1be;
+    --live: #1f8f4e;
+    --heart: #d9467a;
+    --display: "Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif;
+    --text: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    color-scheme: light;
   }
   @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #1c1917; --card: #262220; --ink: #f2ebe4; --muted: #a59a92;
-      --line: #3a332f; --saucer: #4a433e; --cream: #e9dcc4; --coffee: #2a170e;
-      --accent: #d99a62;
+    :root:not([data-theme="light"]) {
+      --bg: #111413; --surface: #1a1e1d; --ink: #e8ecea; --muted: #949d9a; --line: #2a302e;
+      --counter: #3d4644; --porcelain: #dfe4e2; --porcelain-edge: #8f9996; --live: #3ecf7a; --heart: #f06a9b;
+      color-scheme: dark;
     }
   }
+  :root[data-theme="dark"] {
+    --bg: #111413; --surface: #1a1e1d; --ink: #e8ecea; --muted: #949d9a; --line: #2a302e;
+    --counter: #3d4644; --porcelain: #dfe4e2; --porcelain-edge: #8f9996; --live: #3ecf7a; --heart: #f06a9b;
+    color-scheme: dark;
+  }
+
   * { box-sizing: border-box; }
-  body {
-    margin: 0; background: var(--bg); color: var(--ink);
-    font: 16px/1.45 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 400 16px/1.5 var(--text); }
+  .wrap {
+    max-width: 1080px; margin: 0 auto;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 20px 40px;
   }
-  main { max-width: 960px; margin: 0 auto; padding: 24px 16px 48px; }
-  header { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; justify-content: space-between; }
-  h1 { margin: 0; font-size: 2rem; letter-spacing: -0.02em; }
-  h1 span { color: var(--accent); }
-  .sub { margin: 4px 0 0; color: var(--muted); }
-  .pod {
-    display: inline-flex; gap: 8px; align-items: center; padding: 6px 12px;
-    border-radius: 999px; background: var(--card); border: 1px solid var(--line);
-    font: 13px ui-monospace, SFMono-Regular, Menlo, monospace;
+  :focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+  code, .mono { font-family: var(--mono); font-size: 12px; }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--c); flex: none; }
+
+  /* Header */
+  .top { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; }
+  .mark { font: 800 22px/1 var(--display); letter-spacing: -0.02em; color: var(--ink); text-decoration: none; }
+  .mark span { font-weight: 400; color: var(--muted); margin-left: 2px; }
+  .served { margin: 0; display: flex; gap: 8px; align-items: center; color: var(--muted); font-size: 13px; min-width: 0; }
+  .served code { color: var(--ink); overflow-wrap: anywhere; }
+
+  /* Order */
+  .hero { display: grid; gap: 20px; margin-top: 48px; }
+  h1 {
+    margin: 0; max-width: 18ch; font: 700 clamp(34px, 6vw, 52px)/1.02 var(--display);
+    letter-spacing: -0.035em; text-wrap: balance;
   }
-  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--tint); flex: none; }
-  .panel { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 20px; margin-top: 20px; }
-  form { display: grid; gap: 14px; }
-  .menu { display: flex; flex-wrap: wrap; gap: 8px; border: 0; padding: 0; margin: 0; min-width: 0; }
-  .menu legend { font-weight: 600; margin-bottom: 8px; }
-  .menu label { cursor: pointer; }
-  .menu input { position: absolute; opacity: 0; }
-  .menu span {
-    display: inline-flex; gap: 8px; align-items: center; padding: 8px 14px;
-    border-radius: 999px; border: 2px solid var(--line);
+  .order { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: grid; gap: 14px; }
+  .agents { display: flex; flex-wrap: wrap; gap: 8px; border: 0; margin: 0; padding: 0; min-width: 0; }
+  .agents legend { padding: 0; margin-bottom: 10px; font-size: 13px; color: var(--muted); }
+  .agents input { position: absolute; opacity: 0; pointer-events: none; }
+  .agents label > span {
+    display: inline-flex; gap: 8px; align-items: center; height: 36px; padding: 0 12px;
+    border: 1px solid var(--line); border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer;
   }
-  .menu span::before { content: ""; width: 12px; height: 12px; border-radius: 50%; background: var(--c); }
-  .menu input:checked + span { border-color: var(--c); background: color-mix(in srgb, var(--c) 14%, transparent); }
-  .menu input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
-  .fields { display: grid; grid-template-columns: 1fr 2fr auto; gap: 10px; }
-  input[type=text] {
-    width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line);
-    background: var(--bg); color: var(--ink); font: inherit;
+  .agents label:hover > span { border-color: var(--muted); }
+  .agents input:checked + span { border-color: var(--ink); background: var(--bg); box-shadow: inset 0 0 0 1px var(--ink); }
+  .agents input:focus-visible + span { outline: 2px solid var(--ink); outline-offset: 2px; }
+  .fields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) auto; gap: 8px; }
+  .fields input {
+    height: 44px; width: 100%; padding: 0 12px; border: 1px solid var(--line); border-radius: 8px;
+    background: var(--bg); color: var(--ink); font: inherit; font-size: 15px;
   }
-  button {
-    padding: 10px 18px; border: 0; border-radius: 10px; background: var(--accent);
-    color: #fff; font: inherit; font-weight: 600; cursor: pointer;
+  .fields input::placeholder { color: var(--muted); }
+  .fields button {
+    height: 44px; padding: 0 22px; border: 0; border-radius: 8px; background: var(--ink); color: var(--bg);
+    font: 600 15px var(--text); cursor: pointer;
   }
-  .tally { display: flex; flex-wrap: wrap; gap: 8px 20px; color: var(--muted); font-size: 14px; }
-  .tally b { color: var(--ink); }
-  .tally i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--c); margin-right: 6px; }
-  .table { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 14px; margin-top: 20px; }
-  .cup { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px; display: grid; gap: 6px; justify-items: center; text-align: center; }
-  .cup svg { width: 88px; height: 72px; }
-  .cup .who { font-weight: 600; overflow-wrap: anywhere; }
-  .cup .note { color: var(--muted); font-size: 14px; overflow-wrap: anywhere; }
-  .cup .meta { display: inline-flex; gap: 6px; align-items: center; color: var(--muted); font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; }
-  .bars { display: grid; gap: 14px; }
-  .bars h2 { margin: 0; font-size: 1rem; display: flex; gap: 8px; align-items: center; }
-  .bars h2::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 0 4px color-mix(in srgb, #22c55e 25%, transparent); }
-  .bar { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: end; padding-top: 12px; border-top: 1px solid var(--line); }
-  .bar .who { width: 100%; font-weight: 600; }
-  .sip { display: grid; justify-items: center; font: 11px ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); }
-  .sip svg { width: 48px; height: 46px; overflow: visible; }
-  .sip.cold svg { opacity: .45; filter: grayscale(.6); }
-  .sip .steam { fill: none; stroke: var(--muted); stroke-width: 1.6; stroke-linecap: round; opacity: 0; }
-  .sip.brewing .steam { animation: steam 2.4s ease-in-out infinite; }
-  .sip.brewing .steam + .steam { animation-delay: 1.2s; }
-  @keyframes steam { 0% { opacity: 0; transform: translateY(4px); } 40% { opacity: .8; } 100% { opacity: 0; transform: translateY(-6px); } }
-  @media (prefers-reduced-motion: reduce) { .sip.brewing .steam { animation: none; opacity: .7; } }
-  .empty { color: var(--muted); text-align: center; padding: 32px 0; }
-  .error { color: #c2410c; font-family: ui-monospace, monospace; font-size: 13px; }
-  footer { margin-top: 32px; color: var(--muted); font-size: 13px; text-align: center; }
-  @media (max-width: 640px) {
-    .fields { grid-template-columns: 1fr; }
-    h1 { font-size: 1.6rem; }
+  .fields button:hover { opacity: .86; }
+
+  /* Counter */
+  .counter { position: relative; height: 100px; margin-top: 24px; }
+  .counter::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 10px; border-radius: 3px; background: var(--counter); }
+  .shelf {
+    position: absolute; left: 0; right: 0; bottom: 10px; height: 60px; padding-left: 8px;
+    display: flex; gap: 16px; align-items: end; overflow: hidden;
+    -webkit-mask-image: linear-gradient(90deg, #000 75%, transparent); mask-image: linear-gradient(90deg, #000 75%, transparent);
+  }
+  .shelf svg { width: 52px; height: 52px; flex: none; }
+  .shelf .none { align-self: center; color: var(--muted); font-size: 14px; }
+  .cup-body { fill: var(--porcelain); stroke: var(--porcelain-edge); stroke-width: 1; }
+  .cup-handle { fill: none; stroke: var(--porcelain-edge); stroke-width: 3.5; }
+  .cup-band { fill: var(--c); }
+  .steam path { fill: none; stroke: var(--muted); stroke-width: 1.6; stroke-linecap: round; opacity: 0; animation: steam 2.6s ease-in-out infinite; }
+  .steam path + path { animation-delay: 1.3s; }
+  @keyframes steam { 0% { opacity: 0; transform: translateY(3px); } 40% { opacity: .7; } 100% { opacity: 0; transform: translateY(-5px); } }
+
+  /* The cat */
+  .cat { position: absolute; left: 0; bottom: 10px; width: 64px; height: 44px; z-index: 2; will-change: transform; }
+  .cat button { all: unset; display: block; width: 64px; height: 44px; cursor: pointer; }
+  .cat button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; border-radius: 6px; }
+  .cat svg { width: 64px; height: 44px; overflow: visible; fill: var(--ink); }
+  .cat .flip { transform-box: view-box; transform-origin: 32px 22px; }
+  .cat[data-dir="-1"] .flip { transform: scaleX(-1); }
+  .cat .eye { fill: var(--bg); transform-box: fill-box; transform-origin: center; }
+  .cat .tail { fill: none; stroke: var(--ink); stroke-width: 3.5; stroke-linecap: round; transform-box: view-box; transform-origin: 14px 25px; animation: swish 3s ease-in-out infinite; }
+  .cat .leg { transform-box: fill-box; transform-origin: 50% 0; }
+  .cat[data-mode="walk"] .leg, .cat[data-mode="run"] .leg { animation: step .42s ease-in-out infinite alternate; }
+  .cat[data-mode="run"] .leg { animation-duration: .2s; }
+  .cat .leg.b { animation-direction: alternate-reverse !important; }
+  .cat .body-group { transition: transform .4s ease; }
+  .cat[data-mode="sleep"] .leg { transform: scaleY(.25); }
+  .cat[data-mode="sleep"] .body-group { transform: translateY(6px); }
+  .cat[data-mode="sleep"] .eye { transform: scaleY(.15); }
+  .cat[data-mode="sleep"] .tail { animation-duration: 7s; }
+  .cat .zzz { font: 500 11px var(--mono); fill: var(--muted); opacity: 0; }
+  .cat[data-mode="sleep"] .zzz { animation: zzz 3s ease-in-out infinite; }
+  @keyframes step { from { transform: rotate(18deg); } to { transform: rotate(-18deg); } }
+  @keyframes swish { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(14deg); } }
+  @keyframes zzz { 0% { opacity: 0; transform: translateY(2px); } 30% { opacity: 1; } 100% { opacity: 0; transform: translateY(-8px); } }
+  .say {
+    position: absolute; bottom: 52px; left: 0; white-space: nowrap; padding: 6px 10px;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 8px;
+    font: 500 12px var(--mono); color: var(--ink);
+  }
+  .cat[data-side="right"] .say { left: auto; right: 0; }
+  .heart { position: absolute; left: 40px; bottom: 36px; color: var(--heart); font-size: 14px; pointer-events: none; animation: float 1.2s ease-out both; }
+  @keyframes float { from { opacity: 1; transform: none; } to { opacity: 0; transform: translate(var(--dx), -34px); } }
+
+  /* Sections */
+  h2 {
+    display: flex; gap: 10px; align-items: baseline; margin: 0 0 12px;
+    font: 600 12px/1 var(--text); letter-spacing: .07em; text-transform: uppercase; color: var(--muted);
+  }
+  h2 .mono { letter-spacing: 0; text-transform: none; color: var(--ink); }
+  .grid { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); gap: 56px; margin-top: 44px; }
+  aside { display: grid; gap: 36px; align-content: start; min-width: 0; }
+
+  /* Orders */
+  .orders ol { list-style: none; margin: 0; padding: 0; }
+  .orders li {
+    display: grid; grid-template-columns: 44px 32px minmax(0, 1fr) auto; gap: 4px 12px; align-items: center;
+    padding: 12px 0; border-top: 1px solid var(--line);
+  }
+  .orders li:last-child { border-bottom: 1px solid var(--line); }
+  .orders .no { font: 500 12px var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+  .orders li > svg { width: 32px; height: 32px; }
+  .orders .who { min-width: 0; }
+  .orders .name { font-weight: 600; overflow-wrap: anywhere; }
+  .orders .agent { font-weight: 400; color: var(--muted); }
+  .orders .note { color: var(--muted); font-size: 14px; overflow-wrap: anywhere; }
+  .orders .meta { display: flex; gap: 8px; align-items: center; justify-content: end; color: var(--muted); font: 12px var(--mono); white-space: nowrap; }
+  .orders li.empty { display: block; color: var(--muted); }
+  .error { margin: 0 0 12px; color: var(--ink); font-size: 14px; }
+
+  /* Mix */
+  .mixbar { display: flex; gap: 2px; height: 8px; border-radius: 4px; overflow: hidden; background: var(--line); }
+  .mixbar i { background: var(--c); min-width: 4px; }
+  .legend, .pods { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 8px; }
+  .legend { grid-template-columns: 1fr 1fr; column-gap: 20px; }
+  .legend li, .pods li { display: flex; gap: 8px; align-items: center; font-size: 14px; min-width: 0; }
+  .legend b, .pods b { margin-left: auto; font: 500 13px var(--mono); font-variant-numeric: tabular-nums; }
+  .legend li.zero, .pods li.zero { color: var(--muted); }
+  .pods { margin-top: 0; }
+  .pods code { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .pods .you { font: 11px var(--text); color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; flex: none; }
+
+  /* Live bars */
+  .bars { margin-top: 44px; }
+  .bars h2::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--live); align-self: center; animation: pulse 2s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: .35; } }
+  .bar { display: grid; grid-template-columns: 140px minmax(0, 1fr); gap: 12px; align-items: center; padding: 14px 0; border-top: 1px solid var(--line); }
+  .bar:last-child { border-bottom: 1px solid var(--line); }
+  .bar-name { font: 700 18px/1.2 var(--display); letter-spacing: -0.01em; overflow-wrap: anywhere; }
+  .sips { display: flex; flex-wrap: wrap; gap: 10px 18px; }
+  .sip { display: grid; justify-items: center; gap: 2px; font: 11px var(--mono); color: var(--muted); }
+  .sip svg { width: 40px; height: 40px; }
+  .sip.ready span:last-child { color: var(--ink); font-weight: 500; }
+  .sip.cold svg { opacity: .4; }
+  .sip:not(.brewing) .steam { display: none; }
+
+  footer { margin-top: 48px; color: var(--muted); font: 12px var(--mono); }
+
+  @media (max-width: 760px) {
+    .hero { margin-top: 32px; }
+    .fields { grid-template-columns: minmax(0, 1fr); }
+    .grid { grid-template-columns: minmax(0, 1fr); gap: 40px; }
+    .orders li { grid-template-columns: 36px 28px minmax(0, 1fr); }
+    .orders li > svg { width: 28px; height: 28px; }
+    .orders .meta { grid-column: 3; justify-content: start; }
+    .bar { grid-template-columns: minmax(0, 1fr); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+    .steam path { opacity: .6; }
   }
 </style>
 </head>
 <body>
-<main>
-  <header>
-    <div>
-      <h1>☕ caffe <span>board</span></h1>
-      <p class="sub">Order a cup for the coding agent you work with.</p>
-    </div>
-    <div class="pod" id="pod" style="--tint: {{.PodTint}}" title="The pod that answered this request">
-      <span class="dot"></span>poured by {{.Pod}}
-    </div>
+<svg width="0" height="0" style="position: absolute" aria-hidden="true">
+  <symbol id="cup" viewBox="0 0 56 56" overflow="visible">
+    <path class="cup-handle" d="M40 22 h2.5 a7.5 7.5 0 0 1 0 15 h-4"/>
+    <path class="cup-body" d="M9 15 h32 l-2.6 29 q-.6 6.5 -7 6.5 h-12.8 q-6.4 0 -7 -6.5 z"/>
+    <path class="cup-band" d="M10.6 29 h28.8 l-.8 9 h-27.2 z"/>
+  </symbol>
+</svg>
+<div class="wrap">
+  <header class="top">
+    <a class="mark" href="/">caffe<span>board</span></a>
+    <p class="served" id="pod"><span class="dot" style="--c: {{.PodTint}}"></span>Served by <code>{{.Pod}}</code></p>
   </header>
 
-  <section class="panel">
-    <form method="post" action="/">
-      <fieldset class="menu">
-        <legend>What are you drinking with?</legend>
+  <section class="hero">
+    <h1>What are you shipping with tonight?</h1>
+    <form class="order" method="post" action="/" id="order">
+      <fieldset class="agents">
+        <legend>Pick the agent you work with</legend>
         {{range $i, $a := .Menu}}
         <label style="--c: {{$a.Color}}">
-          <input type="radio" name="agent" value="{{$a.ID}}" {{if eq $i 0}}checked{{end}}>
-          <span>{{$a.Name}}</span>
+          <input type="radio" name="agent" id="agent-{{$a.ID}}" value="{{$a.ID}}" {{if eq $i 0}}checked{{end}}>
+          <span><span class="dot"></span>{{$a.Name}}</span>
         </label>
         {{end}}
       </fieldset>
       <div class="fields">
-        <input type="text" name="name" maxlength="40" placeholder="Your name" aria-label="Your name" required>
-        <input type="text" name="note" maxlength="80" placeholder="What are you shipping tonight?" aria-label="What are you shipping tonight?">
+        <input type="text" id="name" name="name" maxlength="40" placeholder="Your name" aria-label="Your name" autocomplete="given-name" required>
+        <input type="text" id="note" name="note" maxlength="80" placeholder="What you're shipping (optional)" aria-label="What you're shipping">
         <button type="submit">Order</button>
       </div>
     </form>
   </section>
 
-  <div id="live">
-  {{if .Bars}}
-  <section class="panel bars" aria-label="Live bars">
-    <h2>Live bars</h2>
-    {{range .Bars}}
-    <div class="bar">
-      <div class="who">{{.Name}}</div>
-      {{range .Sessions}}
-      <div class="sip {{.State}}" title="{{.Agent.Name}}, {{.State}} for {{.For}}">
-        <svg viewBox="0 0 48 46" aria-hidden="true">
-          <path class="steam" d="M18 10 q-3 -4 0 -8"/>
-          <path class="steam" d="M26 10 q3 -4 0 -8"/>
-          <ellipse cx="22" cy="40" rx="19" ry="4" fill="var(--saucer)"/>
-          {{if eq .State "ready"}}<rect x="34" y="35" width="10" height="4" rx="1.5" fill="#d6a060"/>{{end}}
-          <path d="M37 18 q8 0 8 7 t-9 7" fill="none" stroke="var(--cream)" stroke-width="3"/>
-          <path d="M7 12 h30 l-3 20 q-.6 5 -5 5 h-14 q-4.4 0 -5 -5 z" fill="var(--cream)"/>
-          <path d="M8.4 21 h27.2 l-.9 6 h-25.4 z" fill="{{.Agent.Color}}"/>
-          <ellipse cx="22" cy="12" rx="15" ry="3" fill="var(--coffee)"/>
-        </svg>
-        <span>{{.Agent.Name}}</span>
-        <span>{{.State}}</span>
-      </div>
+  <section class="counter" aria-label="The counter">
+    <div class="shelf" id="shelf" aria-hidden="true"{{with .Newest}} data-newest="{{.ID}}" data-call="Order {{printf "%03d" .ID}}: {{.Agent.Name}} for {{.Name}}"{{end}}>
+      {{range .Cups}}
+      <svg style="--c: {{.Agent.Color}}" viewBox="0 0 56 56"><title>{{.Name}}, {{.Agent.Name}}</title><use href="#cup"/>{{if .Fresh}}<g class="steam"><path d="M20 11 q-3 -4 0 -8"/><path d="M29 11 q3 -4 0 -8"/></g>{{end}}</svg>
       {{else}}
-      <span class="sip">The table is clear.</span>
+      <span class="none">The counter is empty. Order the first cup.</span>
       {{end}}
     </div>
+    <div class="cat" id="cat" data-mode="sit" data-dir="1">
+      <button type="button" aria-label="Pet the cat">
+        <svg viewBox="0 0 64 44" aria-hidden="true">
+          <g class="flip">
+            <text class="zzz" x="52" y="2">z</text>
+            <g class="body-group">
+              <path class="tail" d="M14 25 C5 23 3 14 7 7"/>
+              <rect class="leg" x="15" y="30" width="4.5" height="13" rx="2.2"/>
+              <rect class="leg b" x="21" y="30" width="4.5" height="13" rx="2.2"/>
+              <rect class="leg b" x="37" y="30" width="4.5" height="13" rx="2.2"/>
+              <rect class="leg" x="43" y="30" width="4.5" height="13" rx="2.2"/>
+              <rect x="12" y="19" width="38" height="15" rx="7.5"/>
+              <circle cx="51" cy="17" r="8.5"/>
+              <path d="M44.5 12 L45.5 3 L50.5 9.5 Z"/>
+              <path d="M52 9.5 L57 3 L58.5 12 Z"/>
+              <ellipse class="eye" cx="54.5" cy="16" rx="1.3" ry="1.6"/>
+            </g>
+          </g>
+        </svg>
+      </button>
+      <div class="say" id="say" role="status" hidden></div>
+    </div>
+  </section>
+
+  <div id="live">
+    {{if .Bars}}
+    <section class="bars" aria-label="Live bars">
+      <h2>Live bars <span class="mono">from caffe</span></h2>
+      {{range .Bars}}
+      <div class="bar">
+        <div class="bar-name">{{.Name}}</div>
+        <div class="sips">
+          {{range .Sessions}}
+          <div class="sip {{.State}}" title="{{.Agent.Name}}, {{.State}} for {{.For}}">
+            <svg style="--c: {{.Agent.Color}}" viewBox="0 0 56 56" aria-hidden="true"><use href="#cup"/><g class="steam"><path d="M20 11 q-3 -4 0 -8"/><path d="M29 11 q3 -4 0 -8"/></g></svg>
+            <span>{{.Agent.Name}}</span>
+            <span>{{.State}}</span>
+          </div>
+          {{else}}
+          <span class="sip">No agents running.</span>
+          {{end}}
+        </div>
+      </div>
+      {{end}}
+    </section>
     {{end}}
-  </section>
-  {{end}}
 
-  <section class="panel tally" aria-label="Cups per agent">
-    <span><b>{{.Total}}</b> cups from <b>{{.Pods}}</b> {{if eq .Pods 1}}pod{{else}}pods{{end}}</span>
-    {{range .Tally}}<span style="--c: {{.Agent.Color}}"><i></i>{{.Agent.Name}} <b>{{.Count}}</b></span>{{end}}
-  </section>
+    <div class="grid">
+      <section class="orders" aria-label="Orders">
+        <h2>Orders <span class="mono">{{.Total}}</span></h2>
+        {{if .DBError}}<p class="error">The database didn't answer: {{.DBError}}</p>{{end}}
+        <ol>
+          {{range .Cups}}
+          <li>
+            <span class="no">#{{printf "%03d" .ID}}</span>
+            <svg style="--c: {{.Agent.Color}}" viewBox="0 0 56 56" aria-hidden="true"><use href="#cup"/></svg>
+            <div class="who">
+              <div class="name">{{.Name}} <span class="agent">· {{.Agent.Name}}</span></div>
+              {{if .Note}}<div class="note">{{.Note}}</div>{{end}}
+            </div>
+            <div class="meta" title="Poured by {{.Pod}}"><span class="dot" style="--c: {{.PodTint}}"></span>{{.Short}} · {{.Ago}}</div>
+          </li>
+          {{else}}
+          <li class="empty">No orders yet.</li>
+          {{end}}
+        </ol>
+      </section>
 
-  {{if .DBError}}<p class="error">Database: {{.DBError}}</p>{{end}}
-
-  <section class="table" aria-label="Cups on the table">
-    {{range .Cups}}
-    <article class="cup">
-      <svg viewBox="0 0 88 72" aria-hidden="true">
-        <ellipse cx="40" cy="62" rx="34" ry="7" fill="var(--saucer)"/>
-        <path d="M66 26 q14 0 14 12 t-16 12" fill="none" stroke="var(--cream)" stroke-width="5"/>
-        <path d="M14 18 h52 l-5 34 q-1 8 -9 8 h-24 q-8 0 -9 -8 z" fill="var(--cream)"/>
-        <path d="M16.5 34 h47 l-1.5 10 h-44 z" fill="{{.Agent.Color}}"/>
-        <ellipse cx="40" cy="18" rx="26" ry="5" fill="var(--coffee)"/>
-        <ellipse cx="34" cy="17" rx="8" ry="1.6" fill="#a8774c" opacity=".6"/>
-      </svg>
-      <div class="who">{{.Name}}</div>
-      {{if .Note}}<div class="note">{{.Note}}</div>{{end}}
-      <div class="meta" style="--tint: {{.PodTint}}"><span class="dot"></span>{{.Pod}} · {{.Ago}}</div>
-    </article>
-    {{else}}
-    <p class="empty">The table is empty. Be the first to order.</p>
-    {{end}}
-  </section>
+      <aside>
+        <section aria-label="Mix of agents">
+          <h2>Mix</h2>
+          <div class="mixbar">{{range .Tally}}{{if .Count}}<i style="--c: {{.Agent.Color}}; flex-grow: {{.Count}}" title="{{.Agent.Name}}: {{.Count}}"></i>{{end}}{{end}}</div>
+          <ul class="legend">
+            {{range .Tally}}<li{{if not .Count}} class="zero"{{end}}><span class="dot" style="--c: {{.Agent.Color}}"></span>{{.Agent.Name}}<b>{{.Count}}</b></li>{{end}}
+          </ul>
+        </section>
+        <section aria-label="Baristas">
+          <h2>Baristas <span class="mono">{{.Pods}} {{if eq .Pods 1}}pod{{else}}pods{{end}}</span></h2>
+          <ul class="pods">
+            {{range .Baristas}}<li><span class="dot" style="--c: {{.Tint}}"></span><code>{{.Pod}}</code>{{if eq .Pod $.Pod}}<span class="you">serving you</span>{{end}}<b>{{.Count}}</b></li>
+            {{else}}<li class="zero">No cups poured yet.</li>{{end}}
+          </ul>
+        </section>
+      </aside>
+    </div>
   </div>
 
-  <footer>caffe board {{.Version}} · database {{.DBStatus}}</footer>
-</main>
+  <footer>caffe board {{.Version}} · database {{.DBStatus}} · updates every 10 s</footer>
+</div>
+
 <script>
-  // Keep the board live without touching the order form.
+(() => {
+  const counter = document.querySelector(".counter");
+  const cat = document.getElementById("cat");
+  const say = document.getElementById("say");
+  const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let x = 24, target = 24, dir = 1, mode = "sit", speed = 60, until = 0, arrive = null, sayTimer = 0;
+  let newest = Number(document.getElementById("shelf").dataset.newest || 0);
+
+  const room = () => Math.max(0, counter.clientWidth - 64);
+  const set = (next) => { mode = next; cat.dataset.mode = next; };
+
+  function speak(text, ms) {
+    say.textContent = text;
+    say.hidden = false;
+    cat.dataset.side = x > room() - 220 ? "right" : "left";
+    clearTimeout(sayTimer);
+    sayTimer = setTimeout(() => { say.hidden = true; }, ms);
+  }
+
+  function wander(now) {
+    const r = Math.random();
+    if (r < 0.55) { target = Math.random() * room(); speed = 45 + Math.random() * 35; set("walk"); }
+    else if (r < 0.85) { until = now + 2500 + Math.random() * 4500; set("sit"); }
+    else { until = now + 9000 + Math.random() * 9000; set("sleep"); }
+  }
+
+  // Like the barista in caffe: run to the newest cup and call out the order.
+  function callOut(text) {
+    if (still) { speak(text, 4000); return; }
+    target = 0; speed = 220; set("run");
+    arrive = () => { until = performance.now() + 4500; set("sit"); speak(text, 4000); };
+  }
+
+  function pet() {
+    if (mode !== "walk" && mode !== "run") { until = performance.now() + 3000; set("sit"); }
+    speak("purr", 1400);
+    for (let i = 0; i < 3; i++) {
+      const heart = document.createElement("span");
+      heart.className = "heart";
+      heart.textContent = "♥";
+      heart.style.setProperty("--dx", `${(i - 1) * 14}px`);
+      heart.style.animationDelay = `${i * 120}ms`;
+      cat.appendChild(heart);
+      setTimeout(() => heart.remove(), 1600);
+    }
+  }
+
+  let last = performance.now();
+  function frame(now) {
+    const dt = Math.min(now - last, 50) / 1000;
+    last = now;
+    x = Math.min(x, room());
+    if (mode === "walk" || mode === "run") {
+      const gap = target - x, stride = speed * dt;
+      if (Math.abs(gap) <= stride) {
+        x = target;
+        if (arrive) { const done = arrive; arrive = null; done(); }
+        else { until = now + 2000 + Math.random() * 3000; set("sit"); }
+      } else {
+        dir = Math.sign(gap);
+        x += dir * stride;
+      }
+    } else if (now > until) {
+      wander(now);
+    }
+    cat.dataset.dir = dir;
+    cat.style.transform = `translateX(${x}px)`;
+    requestAnimationFrame(frame);
+  }
+
+  cat.querySelector("button").addEventListener("click", pet);
+  document.getElementById("order").addEventListener("submit", () => {
+    try { sessionStorage.setItem("caffe-ordered", "1"); } catch {}
+  });
+
+  cat.style.transform = `translateX(${x}px)`;
+  if (!still) { until = performance.now() + 1500; requestAnimationFrame(frame); }
+
+  try {
+    if (sessionStorage.getItem("caffe-ordered")) {
+      sessionStorage.removeItem("caffe-ordered");
+      const call = document.getElementById("shelf").dataset.call;
+      if (call) setTimeout(() => callOut(call), 400);
+    }
+  } catch {}
+
+  // Keep the board live without touching the order form or the cat.
   setInterval(async () => {
     if (document.hidden) return;
     try {
       const response = await fetch("/", { cache: "no-store" });
       if (!response.ok) return;
       const page = new DOMParser().parseFromString(await response.text(), "text/html");
-      for (const id of ["pod", "live"]) {
+      for (const id of ["pod", "shelf", "live"]) {
         const fresh = page.getElementById(id);
         if (fresh) document.getElementById(id).replaceWith(fresh);
       }
+      const shelf = document.getElementById("shelf");
+      const id = Number(shelf.dataset.newest || 0);
+      if (id > newest && shelf.dataset.call) callOut(shelf.dataset.call);
+      newest = Math.max(newest, id);
     } catch {}
   }, 10000);
+})();
 </script>
 </body>
 </html>

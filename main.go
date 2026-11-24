@@ -51,11 +51,14 @@ func findAgent(id string) (agent, bool) {
 }
 
 type cup struct {
+	ID      int
+	Fresh   bool
 	Name    string
 	Agent   agent
 	Note    string
 	Pod     string
 	PodTint string
+	Short   string
 	Ago     string
 }
 
@@ -77,9 +80,18 @@ type bar struct {
 	Sessions []sip
 }
 
+// barista is a pod and how many cups it has poured.
+type barista struct {
+	Pod   string
+	Tint  string
+	Count int
+}
+
 type pageData struct {
 	Menu     []agent
 	Bars     []bar
+	Baristas []barista
+	Newest   *cup
 	Cups     []cup
 	Tally    []tally
 	Total    int
@@ -221,6 +233,14 @@ func span(d time.Duration) string {
 	}
 }
 
+// short is the part of a pod name that tells replicas apart.
+func short(pod string) string {
+	if i := strings.LastIndex(pod, "-"); i >= 0 && i < len(pod)-1 {
+		return pod[i+1:]
+	}
+	return pod
+}
+
 func ago(t time.Time) string {
 	d := time.Since(t)
 	switch {
@@ -237,7 +257,7 @@ func ago(t time.Time) string {
 
 func loadPage(ctx context.Context, data *pageData) error {
 	rows, err := db.QueryContext(ctx,
-		`SELECT name, agent, note, pod, created FROM cups ORDER BY created DESC LIMIT 60`)
+		`SELECT id, name, agent, note, pod, created FROM cups ORDER BY id DESC LIMIT 60`)
 	if err != nil {
 		return err
 	}
@@ -246,12 +266,14 @@ func loadPage(ctx context.Context, data *pageData) error {
 		var item cup
 		var agentID string
 		var created time.Time
-		if err := rows.Scan(&item.Name, &agentID, &item.Note, &item.Pod, &created); err != nil {
+		if err := rows.Scan(&item.ID, &item.Name, &agentID, &item.Note, &item.Pod, &created); err != nil {
 			return err
 		}
 		item.Agent, _ = findAgent(agentID)
 		item.PodTint = tint(item.Pod)
+		item.Short = short(item.Pod)
 		item.Ago = ago(created)
+		item.Fresh = time.Since(created) < 2*time.Minute
 		data.Cups = append(data.Cups, item)
 	}
 	if err := rows.Err(); err != nil {
@@ -280,9 +302,28 @@ func loadPage(ctx context.Context, data *pageData) error {
 		data.Tally = append(data.Tally, tally{item, counts[item.ID]})
 	}
 
-	if err := db.QueryRowContext(ctx, `SELECT count(DISTINCT pod) FROM cups`).Scan(&data.Pods); err != nil {
+	if len(data.Cups) > 0 {
+		data.Newest = &data.Cups[0]
+	}
+
+	rows, err = db.QueryContext(ctx,
+		`SELECT pod, count(*) FROM cups GROUP BY pod ORDER BY count(*) DESC, pod`)
+	if err != nil {
 		return err
 	}
+	defer rows.Close()
+	for rows.Next() {
+		var item barista
+		if err := rows.Scan(&item.Pod, &item.Count); err != nil {
+			return err
+		}
+		item.Tint = tint(item.Pod)
+		data.Baristas = append(data.Baristas, item)
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	data.Pods = len(data.Baristas)
 	return loadBars(ctx, data)
 }
 
