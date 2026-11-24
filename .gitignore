@@ -1,0 +1,6 @@
+caffe-board
+*.exe
+*.test
+*.out
+.env
+.DS_Store
