@@ -11,7 +11,7 @@ It's one Go binary with PostgreSQL behind it. Built for [Ship your app on Europe
 You need Docker and Go:
 
 ```sh
-docker run --name caffe-db -e POSTGRES_PASSWORD=guest -p 5432:5432 -d postgres:17-alpine
+docker run --name caffe-db -e POSTGRES_PASSWORD=guest -p 5432:5432 -d postgres:19-alpine
 DATABASE_URL='postgres://postgres:guest@localhost:5432/postgres?sslmode=disable' go run .
 ```
 
