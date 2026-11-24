@@ -6,24 +6,27 @@
 <title>caffe board</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,700;12..96,800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap">
 <style>
-  /* Layout: one column. A café counter with the newest cups and the cat, then orders beside the mix and the baristas (pods). */
+  /* Layout: one column. Each bar is caffe's terminal frame (title row, cards, the table strip where its cat walks), then the pods serving the page. */
   :root {
     --bg: #eceeed;
     --surface: #f8f9f8;
     --ink: #151817;
     --muted: #5d6664;
     --line: #d3d8d6;
-    --counter: #b4bcb9;
+    --table: #c4cbc8;
     --porcelain: #ffffff;
     --porcelain-edge: #b9c1be;
-    --live: #1f8f4e;
-    --heart: #d9467a;
     --glass: #ffffff;
     --espresso: #6b4632;
     --milk: #d8bb94;
     --foam: #f6ecdc;
+    --gold: #a8740a;
+    --cold: #6f8fae;
+    --live: #1f8f4e;
+    --heart: #d9467a;
+    --name-ink: 35%;
     --display: "Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif;
     --text: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
     --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -31,16 +34,16 @@
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
-      --bg: #111413; --surface: #1a1e1d; --ink: #e8ecea; --muted: #949d9a; --line: #2a302e;
-      --counter: #3d4644; --porcelain: #dfe4e2; --porcelain-edge: #8f9996; --live: #3ecf7a; --heart: #f06a9b;
-      --glass: #c9d0ce;
+      --bg: #111413; --surface: #1a1e1d; --ink: #e8ecea; --muted: #949d9a; --line: #2a302e; --table: #343c3a;
+      --porcelain: #dfe4e2; --porcelain-edge: #8f9996; --glass: #c9d0ce; --gold: #e8c846; --cold: #8fb3d9;
+      --live: #3ecf7a; --heart: #f06a9b; --name-ink: 0%;
       color-scheme: dark;
     }
   }
   :root[data-theme="dark"] {
-    --bg: #111413; --surface: #1a1e1d; --ink: #e8ecea; --muted: #949d9a; --line: #2a302e;
-    --counter: #3d4644; --porcelain: #dfe4e2; --porcelain-edge: #8f9996; --live: #3ecf7a; --heart: #f06a9b;
-    --glass: #c9d0ce;
+    --bg: #111413; --surface: #1a1e1d; --ink: #e8ecea; --muted: #949d9a; --line: #2a302e; --table: #343c3a;
+    --porcelain: #dfe4e2; --porcelain-edge: #8f9996; --glass: #c9d0ce; --gold: #e8c846; --cold: #8fb3d9;
+    --live: #3ecf7a; --heart: #f06a9b; --name-ink: 0%;
     color-scheme: dark;
   }
 
@@ -53,7 +56,7 @@
     padding-block: 20px 40px;
   }
   :focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
-  code, .mono { font-family: var(--mono); font-size: 12px; }
+  code { font: 13px var(--mono); }
   .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--c); flex: none; }
 
   /* Header */
@@ -61,72 +64,65 @@
   .mark { font: 800 22px/1 var(--display); letter-spacing: -0.02em; color: var(--ink); text-decoration: none; }
   .mark span { font-weight: 400; color: var(--muted); margin-left: 2px; }
   .served { margin: 0; display: flex; gap: 8px; align-items: center; color: var(--muted); font-size: 13px; min-width: 0; }
-  .served code { color: var(--ink); overflow-wrap: anywhere; }
+  .served code { font-size: 12px; color: var(--ink); overflow-wrap: anywhere; }
+  .intro { margin-top: 44px; display: grid; gap: 8px; }
+  h1 { margin: 0; font: 700 clamp(32px, 5.5vw, 48px)/1.05 var(--display); letter-spacing: -0.035em; text-wrap: balance; }
+  .lede { margin: 0; max-width: 60ch; color: var(--muted); }
 
-  /* Order */
-  .hero { display: grid; gap: 20px; margin-top: 48px; }
-  h1 {
-    margin: 0; max-width: 18ch; font: 700 clamp(34px, 6vw, 52px)/1.02 var(--display);
-    letter-spacing: -0.035em; text-wrap: balance;
+  /* A bar: caffe's frame */
+  #bars { display: grid; gap: 20px; margin-top: 28px; }
+  .bar { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .bar-head {
+    display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; padding: 12px 16px;
+    border-bottom: 1px solid var(--line); font: 12px var(--mono); color: var(--muted);
   }
-  .order { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: grid; gap: 14px; }
-  .agents { display: flex; flex-wrap: wrap; gap: 8px; border: 0; margin: 0; padding: 0; min-width: 0; }
-  .agents legend { padding: 0; margin-bottom: 10px; font-size: 13px; color: var(--muted); }
-  .agents input { position: absolute; opacity: 0; pointer-events: none; }
-  .agents label > span {
-    display: inline-flex; gap: 8px; align-items: center; height: 36px; padding: 0 12px;
-    border: 1px solid var(--line); border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer;
-  }
-  .agents label:hover > span { border-color: var(--muted); }
-  .agents input:checked + span { border-color: var(--ink); background: var(--bg); box-shadow: inset 0 0 0 1px var(--ink); }
-  .agents input:focus-visible + span { outline: 2px solid var(--ink); outline-offset: 2px; }
-  .fields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) auto; gap: 8px; }
-  .fields input {
-    height: 44px; width: 100%; padding: 0 12px; border: 1px solid var(--line); border-radius: 8px;
-    background: var(--bg); color: var(--ink); font: inherit; font-size: 15px;
-  }
-  .fields input::placeholder { color: var(--muted); }
-  .fields button {
-    height: 44px; padding: 0 22px; border: 0; border-radius: 8px; background: var(--ink); color: var(--bg);
-    font: 600 15px var(--text); cursor: pointer;
-  }
-  .fields button:hover { opacity: .86; }
-
-  /* Counter */
-  .counter { position: relative; height: 100px; margin-top: 24px; }
-  .counter::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 10px; border-radius: 3px; background: var(--counter); }
-  .shelf {
-    position: absolute; left: 0; right: 0; bottom: 10px; height: 60px; padding-left: 8px;
-    display: flex; gap: 16px; align-items: end; overflow: hidden;
-    -webkit-mask-image: linear-gradient(90deg, #000 75%, transparent); mask-image: linear-gradient(90deg, #000 75%, transparent);
-  }
-  .shelf svg { width: 52px; height: 52px; flex: none; }
-  .shelf .none { align-self: center; color: var(--muted); font-size: 14px; }
+  .bar-name { font: 700 13px var(--mono); color: var(--ink); }
+  .bar-head .tally { margin-left: auto; color: var(--ink); }
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 18px 16px; padding: 18px 16px 8px; }
+  .card { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 12px; align-items: start; }
+  .card svg { width: 44px; height: 44px; }
+  .lines { display: grid; font: 12.5px/1.5 var(--mono); min-width: 0; }
+  .lines > * { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lines .title b { font-weight: 700; color: color-mix(in srgb, var(--c), var(--ink) var(--name-ink)); }
+  .lines .title span, .lines .note { color: var(--muted); }
+  .card.ready .status, .card.ready .note, .card.served .status, .card.closed .status { color: var(--gold); }
+  .card.ready .status { font-weight: 700; }
+  .card.cold .status { color: var(--cold); }
+  .card.cold svg, .card.served svg, .card.closed svg { opacity: .45; }
+  .card.open svg { opacity: .8; }
   .cup-body { fill: var(--porcelain); stroke: var(--porcelain-edge); stroke-width: 1; }
   .cup-handle { fill: none; stroke: var(--porcelain-edge); stroke-width: 3.5; }
-  .cup-band { fill: var(--c); }
+  .cup-band, .latte-coaster { fill: var(--c); }
   .latte-glass { fill: var(--glass); fill-opacity: .35; stroke: var(--porcelain-edge); stroke-width: 1; }
-  .latte-coaster { fill: var(--c); }
-  .steam path { fill: none; stroke: var(--muted); stroke-width: 1.6; stroke-linecap: round; opacity: 0; animation: steam 2.6s ease-in-out infinite; }
+  .biscuit { fill: #d6a060; opacity: var(--biscuit, 0); }
+  .card.ready { --biscuit: 1; }
+  .steam path { fill: none; stroke: var(--muted); stroke-width: 1.8; stroke-linecap: round; opacity: 0; animation: steam 2.6s ease-in-out infinite; }
   .steam path + path { animation-delay: 1.3s; }
+  .card:not(.brewing):not(.busy):not(.pouring) .steam { display: none; }
   @keyframes steam { 0% { opacity: 0; transform: translateY(3px); } 40% { opacity: .7; } 100% { opacity: 0; transform: translateY(-5px); } }
+  .bar-empty { padding: 18px 16px 8px; display: grid; gap: 10px; }
+  .bar-empty p { margin: 0; color: var(--muted); }
 
-  /* The cat */
-  .cat { position: absolute; left: 0; bottom: 10px; width: 64px; height: 44px; z-index: 2; will-change: transform; }
-  .cat button { all: unset; display: block; width: 64px; height: 44px; cursor: pointer; }
+  /* The table strip and the cat */
+  .table { position: relative; height: 58px; }
+  .table::after { content: ""; position: absolute; left: 16px; right: 16px; bottom: 8px; height: 6px; border-radius: 3px; background: var(--table); }
+  .cat { position: absolute; left: 0; bottom: 14px; width: 60px; height: 40px; z-index: 2; }
+  .cat button { all: unset; display: block; width: 60px; height: 40px; cursor: pointer; }
   .cat button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; border-radius: 6px; }
-  .cat svg { width: 64px; height: 44px; overflow: visible; fill: var(--ink); }
+  .cat svg { width: 60px; height: 40px; overflow: visible; }
+  .cat .fur { fill: var(--coat); stroke: var(--ink); stroke-width: 1; stroke-opacity: .55; }
+  .cat .patch { fill: var(--shade); }
+  .cat .tail { fill: none; stroke: var(--shade); stroke-width: 3.5; stroke-linecap: round; transform-box: view-box; transform-origin: 14px 25px; animation: swish 3s ease-in-out infinite; }
+  .cat .eye { fill: var(--eyes); stroke: var(--ink); stroke-width: .5; transform-box: fill-box; transform-origin: center; }
   .cat .flip { transform-box: view-box; transform-origin: 32px 22px; }
   .cat[data-dir="-1"] .flip { transform: scaleX(-1); }
-  .cat .eye { fill: var(--bg); transform-box: fill-box; transform-origin: center; }
-  .cat .tail { fill: none; stroke: var(--ink); stroke-width: 3.5; stroke-linecap: round; transform-box: view-box; transform-origin: 14px 25px; animation: swish 3s ease-in-out infinite; }
   .cat .leg { transform-box: fill-box; transform-origin: 50% 0; }
   .cat[data-mode="walk"] .leg, .cat[data-mode="run"] .leg { animation: step .42s ease-in-out infinite alternate; }
   .cat[data-mode="run"] .leg { animation-duration: .2s; }
   .cat .leg.b { animation-direction: alternate-reverse !important; }
-  .cat .body-group { transition: transform .4s ease; }
+  .cat .body { transition: transform .4s ease; }
   .cat[data-mode="sleep"] .leg { transform: scaleY(.25); }
-  .cat[data-mode="sleep"] .body-group { transform: translateY(6px); }
+  .cat[data-mode="sleep"] .body { transform: translateY(6px); }
   .cat[data-mode="sleep"] .eye { transform: scaleY(.15); }
   .cat[data-mode="sleep"] .tail { animation-duration: 7s; }
   .cat .zzz { font: 500 11px var(--mono); fill: var(--muted); opacity: 0; }
@@ -135,77 +131,38 @@
   @keyframes swish { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(14deg); } }
   @keyframes zzz { 0% { opacity: 0; transform: translateY(2px); } 30% { opacity: 1; } 100% { opacity: 0; transform: translateY(-8px); } }
   .say {
-    position: absolute; bottom: 52px; left: 0; white-space: nowrap; padding: 6px 10px;
-    background: var(--surface); border: 1px solid var(--line); border-radius: 8px;
-    font: 500 12px var(--mono); color: var(--ink);
+    position: absolute; bottom: 46px; left: 0; white-space: nowrap; padding: 5px 9px;
+    background: var(--bg); border: 1px solid var(--line); border-radius: 8px; font: 500 12px var(--mono); color: var(--ink);
   }
+  .say.ready { color: var(--gold); border-color: var(--gold); }
   .cat[data-side="right"] .say { left: auto; right: 0; }
-  .heart { position: absolute; left: 40px; bottom: 36px; color: var(--heart); font-size: 14px; pointer-events: none; animation: float 1.2s ease-out both; }
-  @keyframes float { from { opacity: 1; transform: none; } to { opacity: 0; transform: translate(var(--dx), -34px); } }
+  .heart { position: absolute; left: 36px; bottom: 32px; color: var(--heart); font-size: 14px; pointer-events: none; animation: float 1.2s ease-out both; }
+  @keyframes float { from { opacity: 1; transform: none; } to { opacity: 0; transform: translate(var(--dx), -32px); } }
+  .bar-foot { padding: 8px 16px 12px; border-top: 1px solid var(--line); font: 12px var(--mono); color: var(--muted); }
 
-  /* Sections */
-  h2 {
-    display: flex; gap: 10px; align-items: baseline; margin: 0 0 12px;
-    font: 600 12px/1 var(--text); letter-spacing: .07em; text-transform: uppercase; color: var(--muted);
-  }
-  h2 .mono { letter-spacing: 0; text-transform: none; color: var(--ink); }
-  .grid { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); gap: 56px; margin-top: 44px; }
-  aside { display: grid; gap: 36px; align-content: start; min-width: 0; }
-
-  /* Orders */
-  .orders ol { list-style: none; margin: 0; padding: 0; }
-  .orders li {
-    display: grid; grid-template-columns: 44px 32px minmax(0, 1fr) auto; gap: 4px 12px; align-items: center;
-    padding: 12px 0; border-top: 1px solid var(--line);
-  }
-  .orders li:last-child { border-bottom: 1px solid var(--line); }
-  .orders .no { font: 500 12px var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
-  .orders li > svg { width: 32px; height: 32px; }
-  .orders .who { min-width: 0; }
-  .orders .name { font-weight: 600; overflow-wrap: anywhere; }
-  .orders .agent { font-weight: 400; color: var(--muted); }
-  .orders .note { color: var(--muted); font-size: 14px; overflow-wrap: anywhere; }
-  .orders .meta { display: flex; gap: 8px; align-items: center; justify-content: end; color: var(--muted); font: 12px var(--mono); white-space: nowrap; }
-  .orders li.empty { display: block; color: var(--muted); }
-  .error { margin: 0 0 12px; color: var(--ink); font-size: 14px; }
-
-  /* Mix */
-  .mixbar { display: flex; gap: 2px; height: 8px; border-radius: 4px; overflow: hidden; background: var(--line); }
-  .mixbar i { background: var(--c); min-width: 4px; }
-  .legend, .pods { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 8px; }
-  .legend { grid-template-columns: 1fr 1fr; column-gap: 20px; }
-  .legend li, .pods li { display: flex; gap: 8px; align-items: center; font-size: 14px; min-width: 0; }
-  .legend b, .pods b { margin-left: auto; font: 500 13px var(--mono); font-variant-numeric: tabular-nums; }
-  .legend li.zero, .pods li.zero { color: var(--muted); }
-  .pods { margin-top: 0; }
-  .pods code { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  /* Setup and baristas */
+  .below { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 48px; margin-top: 40px; }
+  h2 { display: flex; gap: 10px; align-items: baseline; margin: 0 0 12px; font: 600 12px/1 var(--text); letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+  h2 code { font-size: 12px; letter-spacing: 0; text-transform: none; color: var(--ink); }
+  .steps { margin: 0; padding-left: 20px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; color: var(--muted); }
+  .steps li { min-width: 0; }
+  .steps li::marker { font: 500 12px var(--mono); }
+  .cmd { display: flex; gap: 8px; align-items: center; margin-top: 6px; padding: 8px 8px 8px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); min-width: 0; }
+  .cmd code { flex: 1; min-width: 0; overflow-x: auto; white-space: nowrap; color: var(--ink); }
+  .cmd button { flex: none; height: 30px; padding: 0 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--ink); font: 500 12px var(--text); cursor: pointer; }
+  .cmd button:hover { border-color: var(--muted); }
+  .pods { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  .pods li { display: flex; gap: 8px; align-items: center; font-size: 14px; min-width: 0; }
+  .pods code { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
   .pods .you { font: 11px var(--text); color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; flex: none; }
-
-  /* Live bars */
-  .bars { margin-top: 44px; }
-  .bars h2::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--live); align-self: center; animation: pulse 2s ease-in-out infinite; }
-  @keyframes pulse { 50% { opacity: .35; } }
-  .bar { display: grid; grid-template-columns: 140px minmax(0, 1fr); gap: 12px; align-items: center; padding: 14px 0; border-top: 1px solid var(--line); }
-  .bar:last-child { border-bottom: 1px solid var(--line); }
-  .bar-name { font: 700 18px/1.2 var(--display); letter-spacing: -0.01em; overflow-wrap: anywhere; }
-  .sips { display: flex; flex-wrap: wrap; gap: 10px 18px; }
-  .sip { display: grid; justify-items: center; gap: 2px; font: 11px var(--mono); color: var(--muted); }
-  .sip svg { width: 40px; height: 40px; }
-  .sip.ready span:last-child { color: var(--ink); font-weight: 500; }
-  .sip.cold svg { opacity: .4; }
-  .sip:not(.brewing):not(.busy) .steam { display: none; }
-  .sip.open svg { opacity: .7; }
-
-  footer { margin-top: 48px; color: var(--muted); font: 12px var(--mono); }
+  .pods b { margin-left: auto; font: 500 12px var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .error { margin: 16px 0 0; font-size: 14px; }
+  .wrap > footer { margin-top: 48px; color: var(--muted); font: 12px var(--mono); }
 
   @media (max-width: 760px) {
-    .hero { margin-top: 32px; }
-    .fields { grid-template-columns: minmax(0, 1fr); }
-    .grid { grid-template-columns: minmax(0, 1fr); gap: 40px; }
-    .orders li { grid-template-columns: 36px 28px minmax(0, 1fr); }
-    .orders li > svg { width: 28px; height: 28px; }
-    .orders .meta { grid-column: 3; justify-content: start; }
-    .bar { grid-template-columns: minmax(0, 1fr); }
+    .intro { margin-top: 32px; }
+    .below { grid-template-columns: minmax(0, 1fr); gap: 36px; }
+    .bar-head .tally { margin-left: 0; width: 100%; }
   }
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation: none !important; transition: none !important; }
@@ -216,6 +173,7 @@
 <body>
 <svg width="0" height="0" style="position: absolute" aria-hidden="true">
   <symbol id="cup" viewBox="0 0 56 56" overflow="visible">
+    <rect class="biscuit" x="38" y="47" width="14" height="5" rx="2"/>
     <path class="cup-handle" d="M40 22 h2.5 a7.5 7.5 0 0 1 0 15 h-4"/>
     <path class="cup-body" d="M9 15 h32 l-2.6 29 q-.6 6.5 -7 6.5 h-12.8 q-6.4 0 -7 -6.5 z"/>
     <path class="cup-band" d="M10.6 29 h28.8 l-.8 9 h-27.2 z"/>
@@ -234,119 +192,79 @@
     <p class="served" id="pod"><span class="dot" style="--c: {{.PodTint}}"></span>Served by <code>{{.Pod}}</code></p>
   </header>
 
-  <section class="hero">
-    <h1>What are you shipping with tonight?</h1>
-    <form class="order" method="post" action="/" id="order">
-      <fieldset class="agents">
-        <legend>Pick the agent you work with</legend>
-        {{range $i, $a := .Menu}}
-        <label style="--c: {{$a.Color}}">
-          <input type="radio" name="agent" id="agent-{{$a.ID}}" value="{{$a.ID}}" {{if eq $i 0}}checked{{end}}>
-          <span><span class="dot"></span>{{$a.Name}}</span>
-        </label>
-        {{end}}
-      </fieldset>
-      <div class="fields">
-        <input type="text" id="name" name="name" maxlength="40" placeholder="Your name" aria-label="Your name" autocomplete="given-name" required>
-        <input type="text" id="note" name="note" maxlength="80" placeholder="What you're shipping (optional)" aria-label="What you're shipping">
-        <button type="submit">Order</button>
-      </div>
-    </form>
+  <section class="intro">
+    <h1>Agents at work in the room</h1>
+    <p class="lede">Every terminal running caffe with this board's address shows its table here: the same cards, the same tally and the same cat.</p>
   </section>
 
-  <section class="counter" aria-label="The counter">
-    <div class="shelf" id="shelf" aria-hidden="true"{{with .Newest}} data-newest="{{.ID}}" data-call="Order {{printf "%03d" .ID}}: {{.Agent.Name}} for {{.Name}}"{{end}}>
-      {{range .Cups}}
-      <svg style="--c: {{.Agent.Color}}" viewBox="0 0 56 56"><title>{{.Name}}, {{.Agent.Name}}</title><use href="#cup"/>{{if .Fresh}}<g class="steam"><path d="M20 11 q-3 -4 0 -8"/><path d="M29 11 q3 -4 0 -8"/></g>{{end}}</svg>
-      {{else}}
-      <span class="none">The counter is empty. Order the first cup.</span>
-      {{end}}
-    </div>
-    <div class="cat" id="cat" data-mode="sit" data-dir="1">
-      <button type="button" aria-label="Pet the cat">
-        <svg viewBox="0 0 64 44" aria-hidden="true">
-          <g class="flip">
-            <text class="zzz" x="52" y="2">z</text>
-            <g class="body-group">
-              <path class="tail" d="M14 25 C5 23 3 14 7 7"/>
-              <rect class="leg" x="15" y="30" width="4.5" height="13" rx="2.2"/>
-              <rect class="leg b" x="21" y="30" width="4.5" height="13" rx="2.2"/>
-              <rect class="leg b" x="37" y="30" width="4.5" height="13" rx="2.2"/>
-              <rect class="leg" x="43" y="30" width="4.5" height="13" rx="2.2"/>
-              <rect x="12" y="19" width="38" height="15" rx="7.5"/>
-              <circle cx="51" cy="17" r="8.5"/>
-              <path d="M44.5 12 L45.5 3 L50.5 9.5 Z"/>
-              <path d="M52 9.5 L57 3 L58.5 12 Z"/>
-              <ellipse class="eye" cx="54.5" cy="16" rx="1.3" ry="1.6"/>
-            </g>
-          </g>
-        </svg>
-      </button>
-      <div class="say" id="say" role="status" hidden></div>
-    </div>
-  </section>
-
-  <div id="live">
-    {{if .Bars}}
-    <section class="bars" aria-label="Live bars">
-      <h2>Live bars <span class="mono">from caffe</span></h2>
-      {{range .Bars}}
-      <div class="bar">
-        <div class="bar-name">{{.Name}}</div>
-        <div class="sips">
-          {{range .Sessions}}
-          <div class="sip {{.State}}" title="{{.Agent.Name}}, {{.State}} for {{.For}}">
-            <svg style="--c: {{.Agent.Color}}" viewBox="0 0 56 56" aria-hidden="true"><use href="{{if .App}}#latte{{else}}#cup{{end}}"/><g class="steam"><path d="M20 11 q-3 -4 0 -8"/><path d="M29 11 q3 -4 0 -8"/></g></svg>
-            <span>{{.Agent.Name}}</span>
-            <span>{{.State}}</span>
+  <div id="bars">
+    {{range .Bars}}
+    <article class="bar" data-name="{{.Name}}" aria-label="{{.Name}}'s bar">
+      <header class="bar-head">
+        <span class="bar-name">☕ {{.Name}}</span>
+        <span>awake {{span .Awake}}</span>
+        <span class="tally">{{.Tally}}</span>
+      </header>
+      <div class="cards">
+        {{range .Cards}}
+        <div class="card {{.State}}" data-id="{{.ID}}" data-call="{{.Name}}{{if and .Where (ne .Where "app")}} in {{.Where}}{{end}} is ready" style="--c: {{color .Agent}}">
+          <svg viewBox="0 0 56 56" aria-hidden="true"><use href="{{if eq .Kind "app"}}#latte{{else}}#cup{{end}}"/><g class="steam"><path d="M20 11 q-3 -4 0 -8"/><path d="M29 11 q3 -4 0 -8"/></g></svg>
+          <div class="lines">
+            <div class="title"><b>{{.Name}}</b>{{if .Where}} <span>{{.Where}}</span>{{end}}</div>
+            <div class="status">{{.Status}}</div>
+            <div class="note">{{.Note}}</div>
           </div>
-          {{else}}
-          <span class="sip">No agents running.</span>
-          {{end}}
+        </div>
+        {{else}}
+        <p class="note">The table is clean.</p>
+        {{end}}
+      </div>
+      <div class="table">
+        <div class="cat" data-mode="sit" data-dir="1" style="--coat: {{.Cat.Coat}}; --shade: {{.Cat.Shade}}; --eyes: {{.Cat.Eyes}}">
+          <button type="button" aria-label="Pet {{.Cat.Name}}">{{template "catsvg"}}</button>
+          <div class="say" role="status" hidden></div>
         </div>
       </div>
-      {{end}}
-    </section>
+      <footer class="bar-foot">{{.Cat.Title}} is on shift · click to pet</footer>
+    </article>
+    {{else}}
+    <article class="bar" data-name="" aria-label="No bars open">
+      <header class="bar-head"><span class="bar-name">☕ caffe</span><span class="tally">no bars open</span></header>
+      <div class="bar-empty">
+        <p>No one has a bar open yet. Start caffe with this board's address (below) and your agents show up here.</p>
+      </div>
+      <div class="table">
+        <div class="cat" data-mode="sit" data-dir="1" style="--coat: #36363e; --shade: #36363e; --eyes: #e8c846">
+          <button type="button" aria-label="Pet the cat">{{template "catsvg"}}</button>
+          <div class="say" role="status" hidden></div>
+        </div>
+      </div>
+      <footer class="bar-foot">The house cat keeps the counter warm · click to pet</footer>
+    </article>
     {{end}}
+  </div>
 
-    <div class="grid">
-      <section class="orders" aria-label="Orders">
-        <h2>Orders <span class="mono">{{.Total}}</span></h2>
-        {{if .DBError}}<p class="error">The database didn't answer: {{.DBError}}</p>{{end}}
-        <ol>
-          {{range .Cups}}
-          <li>
-            <span class="no">#{{printf "%03d" .ID}}</span>
-            <svg style="--c: {{.Agent.Color}}" viewBox="0 0 56 56" aria-hidden="true"><use href="#cup"/></svg>
-            <div class="who">
-              <div class="name">{{.Name}} <span class="agent">· {{.Agent.Name}}</span></div>
-              {{if .Note}}<div class="note">{{.Note}}</div>{{end}}
-            </div>
-            <div class="meta" title="Poured by {{.Pod}}"><span class="dot" style="--c: {{.PodTint}}"></span>{{.Short}} · {{.Ago}}</div>
-          </li>
-          {{else}}
-          <li class="empty">No orders yet.</li>
-          {{end}}
-        </ol>
-      </section>
+  {{if .DBError}}<p class="error">The database didn't answer: {{.DBError}}</p>{{end}}
 
-      <aside>
-        <section aria-label="Mix of agents">
-          <h2>Mix</h2>
-          <div class="mixbar">{{range .Tally}}{{if .Count}}<i style="--c: {{.Agent.Color}}; flex-grow: {{.Count}}" title="{{.Agent.Name}}: {{.Count}}"></i>{{end}}{{end}}</div>
-          <ul class="legend">
-            {{range .Tally}}<li{{if not .Count}} class="zero"{{end}}><span class="dot" style="--c: {{.Agent.Color}}"></span>{{.Agent.Name}}<b>{{.Count}}</b></li>{{end}}
-          </ul>
-        </section>
-        <section aria-label="Baristas">
-          <h2>Baristas <span class="mono">{{.Pods}} {{if eq .Pods 1}}pod{{else}}pods{{end}}</span></h2>
-          <ul class="pods">
-            {{range .Baristas}}<li><span class="dot" style="--c: {{.Tint}}"></span><code>{{.Pod}}</code>{{if eq .Pod $.Pod}}<span class="you">serving you</span>{{end}}<b>{{.Count}}</b></li>
-            {{else}}<li class="zero">No cups poured yet.</li>{{end}}
-          </ul>
-        </section>
-      </aside>
-    </div>
+  <div class="below">
+    <section aria-label="Put your bar here">
+      <h2>Put your bar here</h2>
+      <ol class="steps">
+        <li>Install caffe on your Mac.
+          <div class="cmd"><code>curl -fsSL https://raw.githubusercontent.com/alexgnq/caffe/main/install.sh | sh</code><button type="button" data-copy>Copy</button></div>
+        </li>
+        <li>Start it with this board's address. Add <code>CAFFE_BOARD_NAME=you</code> to name your bar.
+          <div class="cmd"><code>CAFFE_BOARD_URL={{.BoardURL}} caffe</code><button type="button" data-copy>Copy</button></div>
+        </li>
+      </ol>
+    </section>
+    <section aria-label="Baristas" id="baristas">
+      <h2>Baristas <code>{{len .Baristas}} {{if eq (len .Baristas) 1}}pod{{else}}pods{{end}}</code></h2>
+      <ul class="pods">
+        {{range .Baristas}}<li><span class="dot" style="--c: {{.Tint}}"></span><code>{{.Pod}}</code>{{if eq .Pod $.Pod}}<span class="you">serving you</span>{{end}}<b>{{.Updates}} updates</b></li>
+        {{else}}<li>No pods have checked in.</li>{{end}}
+      </ul>
+    </section>
   </div>
 
   <footer>caffe board {{.Version}} · database {{.DBStatus}} · updates every 10 s</footer>
@@ -354,109 +272,157 @@
 
 <script>
 (() => {
-  const counter = document.querySelector(".counter");
-  const cat = document.getElementById("cat");
-  const say = document.getElementById("say");
   const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  let x = 24, target = 24, dir = 1, mode = "sit", speed = 60, until = 0, arrive = null, sayTimer = 0;
-  let newest = Number(document.getElementById("shelf").dataset.newest || 0);
+  let cats = [];
 
-  const room = () => Math.max(0, counter.clientWidth - 64);
-  const set = (next) => { mode = next; cat.dataset.mode = next; };
+  // One barista per bar, like the cat on caffe's table: it wanders, naps,
+  // purrs when petted and runs to call out a session that's ready for you.
+  function makeCat(bar) {
+    const strip = bar.querySelector(".table");
+    const el = bar.querySelector(".cat");
+    const say = el.querySelector(".say");
+    const me = { bar, x: 16, target: 16, dir: 1, mode: "sit", speed: 60, until: performance.now() + 1500, arrive: null, timer: 0 };
+    const room = () => Math.max(16, strip.clientWidth - 76);
+    const set = (mode) => { me.mode = mode; el.dataset.mode = mode; };
 
-  function speak(text, ms) {
-    say.textContent = text;
-    say.hidden = false;
-    cat.dataset.side = x > room() - 220 ? "right" : "left";
-    clearTimeout(sayTimer);
-    sayTimer = setTimeout(() => { say.hidden = true; }, ms);
+    me.speak = (text, ms, ready) => {
+      say.textContent = text;
+      say.classList.toggle("ready", !!ready);
+      say.hidden = false;
+      el.dataset.side = me.x > room() - 200 ? "right" : "left";
+      clearTimeout(me.timer);
+      me.timer = setTimeout(() => { say.hidden = true; }, ms);
+    };
+    me.callOut = (card) => {
+      const text = card.dataset.call;
+      if (still) { me.speak(text, 5000, true); return; }
+      const box = card.getBoundingClientRect(), base = strip.getBoundingClientRect();
+      me.target = Math.min(room(), Math.max(16, box.left - base.left));
+      me.speed = 200;
+      set("run");
+      me.arrive = () => { me.until = performance.now() + 5000; set("sit"); me.speak(text, 5000, true); };
+    };
+    me.tick = (now, dt) => {
+      me.x = Math.min(me.x, room());
+      if (me.mode === "walk" || me.mode === "run") {
+        const gap = me.target - me.x, stride = me.speed * dt;
+        if (Math.abs(gap) <= stride) {
+          me.x = me.target;
+          if (me.arrive) { const done = me.arrive; me.arrive = null; done(); }
+          else { me.until = now + 2000 + Math.random() * 3000; set("sit"); }
+        } else {
+          me.dir = Math.sign(gap);
+          me.x += me.dir * stride;
+        }
+      } else if (now > me.until) {
+        const r = Math.random();
+        if (r < 0.55) { me.target = 16 + Math.random() * (room() - 16); me.speed = 45 + Math.random() * 35; set("walk"); }
+        else if (r < 0.85) { me.until = now + 2500 + Math.random() * 4500; set("sit"); }
+        else { me.until = now + 9000 + Math.random() * 9000; set("sleep"); }
+      }
+      el.dataset.dir = me.dir;
+      el.style.transform = `translateX(${me.x}px)`;
+    };
+    el.querySelector("button").addEventListener("click", () => {
+      if (me.mode !== "run") { me.until = performance.now() + 3000; set("sit"); }
+      me.speak("purr", 1400);
+      for (let i = 0; i < 3; i++) {
+        const heart = document.createElement("span");
+        heart.className = "heart";
+        heart.textContent = "♥";
+        heart.style.setProperty("--dx", `${(i - 1) * 14}px`);
+        heart.style.animationDelay = `${i * 120}ms`;
+        el.appendChild(heart);
+        setTimeout(() => heart.remove(), 1600);
+      }
+    });
+    el.style.transform = `translateX(${me.x}px)`;
+    me.ready = readyIds(bar);
+    return me;
   }
 
-  function wander(now) {
-    const r = Math.random();
-    if (r < 0.55) { target = Math.random() * room(); speed = 45 + Math.random() * 35; set("walk"); }
-    else if (r < 0.85) { until = now + 2500 + Math.random() * 4500; set("sit"); }
-    else { until = now + 9000 + Math.random() * 9000; set("sleep"); }
-  }
-
-  // Like the barista in caffe: run to the newest cup and call out the order.
-  function callOut(text) {
-    if (still) { speak(text, 4000); return; }
-    target = 0; speed = 220; set("run");
-    arrive = () => { until = performance.now() + 4500; set("sit"); speak(text, 4000); };
-  }
-
-  function pet() {
-    if (mode !== "walk" && mode !== "run") { until = performance.now() + 3000; set("sit"); }
-    speak("purr", 1400);
-    for (let i = 0; i < 3; i++) {
-      const heart = document.createElement("span");
-      heart.className = "heart";
-      heart.textContent = "♥";
-      heart.style.setProperty("--dx", `${(i - 1) * 14}px`);
-      heart.style.animationDelay = `${i * 120}ms`;
-      cat.appendChild(heart);
-      setTimeout(() => heart.remove(), 1600);
-    }
-  }
+  const readyIds = (bar) => new Set([...bar.querySelectorAll(".card.ready")].map((c) => c.dataset.id));
+  const names = (root) => [...root.querySelectorAll(".bar")].map((b) => b.dataset.name).join("\n");
+  const start = () => { cats = [...document.querySelectorAll("#bars .bar")].map(makeCat); };
 
   let last = performance.now();
   function frame(now) {
     const dt = Math.min(now - last, 50) / 1000;
     last = now;
-    x = Math.min(x, room());
-    if (mode === "walk" || mode === "run") {
-      const gap = target - x, stride = speed * dt;
-      if (Math.abs(gap) <= stride) {
-        x = target;
-        if (arrive) { const done = arrive; arrive = null; done(); }
-        else { until = now + 2000 + Math.random() * 3000; set("sit"); }
-      } else {
-        dir = Math.sign(gap);
-        x += dir * stride;
-      }
-    } else if (now > until) {
-      wander(now);
-    }
-    cat.dataset.dir = dir;
-    cat.style.transform = `translateX(${x}px)`;
+    for (const c of cats) c.tick(now, dt);
     requestAnimationFrame(frame);
   }
+  start();
+  if (!still) requestAnimationFrame(frame);
 
-  cat.querySelector("button").addEventListener("click", pet);
-  document.getElementById("order").addEventListener("submit", () => {
-    try { sessionStorage.setItem("caffe-ordered", "1"); } catch {}
+  document.addEventListener("click", async (event) => {
+    const button = event.target.closest("[data-copy]");
+    if (!button) return;
+    const code = button.parentElement.querySelector("code");
+    try {
+      await navigator.clipboard.writeText(code.textContent);
+      button.textContent = "Copied";
+    } catch {
+      getSelection().selectAllChildren(code);
+      button.textContent = "Selected";
+    }
+    setTimeout(() => { button.textContent = "Copy"; }, 1600);
   });
 
-  cat.style.transform = `translateX(${x}px)`;
-  if (!still) { until = performance.now() + 1500; requestAnimationFrame(frame); }
-
-  try {
-    if (sessionStorage.getItem("caffe-ordered")) {
-      sessionStorage.removeItem("caffe-ordered");
-      const call = document.getElementById("shelf").dataset.call;
-      if (call) setTimeout(() => callOut(call), 400);
-    }
-  } catch {}
-
-  // Keep the board live without touching the order form or the cat.
+  // Every 10 s, bring each bar up to date in place, so the cats keep walking.
+  // Bars that open or close redraw the whole table.
   setInterval(async () => {
     if (document.hidden) return;
     try {
       const response = await fetch("/", { cache: "no-store" });
       if (!response.ok) return;
       const page = new DOMParser().parseFromString(await response.text(), "text/html");
-      for (const id of ["pod", "shelf", "live"]) {
+      for (const id of ["pod", "baristas"]) {
         const fresh = page.getElementById(id);
         if (fresh) document.getElementById(id).replaceWith(fresh);
       }
-      const shelf = document.getElementById("shelf");
-      const id = Number(shelf.dataset.newest || 0);
-      if (id > newest && shelf.dataset.call) callOut(shelf.dataset.call);
-      newest = Math.max(newest, id);
+      const fresh = page.getElementById("bars");
+      const current = document.getElementById("bars");
+      if (names(fresh) !== names(current)) {
+        current.replaceWith(fresh);
+        start();
+        return;
+      }
+      for (const cat of cats) {
+        const next = [...fresh.querySelectorAll(".bar")].find((b) => b.dataset.name === cat.bar.dataset.name);
+        for (const part of [".bar-head", ".cards", ".bar-foot"]) {
+          const old = cat.bar.querySelector(part), updated = next.querySelector(part);
+          if (old && updated) old.replaceWith(updated);
+        }
+        const catEl = cat.bar.querySelector(".cat");
+        catEl.setAttribute("style", next.querySelector(".cat").getAttribute("style"));
+        catEl.style.transform = `translateX(${cat.x}px)`;
+        const ready = readyIds(cat.bar);
+        const fresh = [...ready].find((id) => !cat.ready.has(id));
+        cat.ready = ready;
+        if (fresh) cat.callOut(cat.bar.querySelector(`.card[data-id="${CSS.escape(fresh)}"]`));
+      }
     } catch {}
   }, 10000);
 })();
 </script>
 </body>
 </html>
+{{define "catsvg"}}<svg viewBox="0 0 64 44" aria-hidden="true">
+    <g class="flip">
+      <text class="zzz" x="52" y="2">z</text>
+      <g class="body">
+        <path class="tail" d="M14 25 C5 23 3 14 7 7"/>
+        <rect class="leg fur" x="15" y="30" width="4.5" height="13" rx="2.2"/>
+        <rect class="leg b fur" x="21" y="30" width="4.5" height="13" rx="2.2"/>
+        <rect class="leg b fur" x="37" y="30" width="4.5" height="13" rx="2.2"/>
+        <rect class="leg fur" x="43" y="30" width="4.5" height="13" rx="2.2"/>
+        <rect class="fur" x="12" y="19" width="38" height="15" rx="7.5"/>
+        <path class="patch" d="M22 19.5 h10 v6 q-5 3 -10 0 z"/>
+        <circle class="fur" cx="51" cy="17" r="8.5"/>
+        <path class="patch" d="M44.5 12 L45.5 3 L50.5 9.5 Z"/>
+        <path class="patch" d="M52 9.5 L57 3 L58.5 12 Z"/>
+        <ellipse class="eye" cx="54.5" cy="16" rx="1.4" ry="1.7"/>
+      </g>
+    </g>
+</svg>{{end}}

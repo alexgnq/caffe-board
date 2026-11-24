@@ -1,10 +1,18 @@
 # ☕ caffe board
 
-A coffee bar for the room. Order a cup for the coding agent you work with and see what everyone else is drinking. It's a web version of the table in [caffe](https://github.com/alexgnq/caffe).
+[caffe](https://github.com/alexgnq/caffe) on the web. Every terminal running caffe with this board's address shows its table here the way it looks in the terminal: the same cards with the same lines, the tally, and the barista cat, coat and all. When a session is ready for you, the cat runs under its card and calls it out.
 
-Every cup remembers the pod that poured it, and each pod gets its own colour. Scale to a few replicas and reload, and you can watch the cluster share the work.
+The pods serving the page are listed as baristas, with how many caffe updates each one took. Scale to a few replicas and you can watch them share the work.
 
 It's one Go binary with PostgreSQL behind it. Built for [Ship your app on European Kubernetes](https://github.com/ankraio/ship-on-european-kubernetes).
+
+## Put your bar on it
+
+```sh
+CAFFE_BOARD_URL=https://your-board.example caffe
+```
+
+caffe sends its bar every 10 seconds and closes it when you quit. A bar that stops reporting closes after a minute. Project names and session titles stay on the Mac unless caffe runs with `CAFFE_BOARD_PROJECTS=1`.
 
 ## Run it locally
 
@@ -15,7 +23,7 @@ docker run --name caffe-db -e POSTGRES_PASSWORD=guest -p 5432:5432 -d postgres:1
 DATABASE_URL='postgres://postgres:guest@localhost:5432/postgres?sslmode=disable' go run .
 ```
 
-Then open <http://localhost:8080>.
+Then open <http://localhost:8080> and start caffe with `CAFFE_BOARD_URL=http://localhost:8080`.
 
 ## Configuration
 
@@ -23,30 +31,29 @@ Then open <http://localhost:8080>.
 |---|---|---|
 | `DATABASE_URL` | | Postgres connection string. If unset, the standard `PG*` variables are used. |
 | `PORT` | `8080` | Port to listen on. |
-| `POD_NAME` | hostname | Shown on the page and stamped on each cup. |
-| `APP_VERSION` | `1.0.0` | Shown in the footer. |
+| `POD_NAME` | hostname | The barista name shown for this pod. |
 | `BOARD_TOKEN` | | If set, caffe must send it as a bearer token to update a bar. |
+| `APP_VERSION` | `1.0.0` | Shown in the footer. |
 
 `/healthz` answers `ok` once the database is reachable.
 
-## Live bars
+## API
 
-[caffe](https://github.com/alexgnq/caffe) can put your running agent sessions on the board. Each laptop gets a bar with a cup per session: brewing, ready, idle or cold. caffe sends only each session's agent and state, never project names. A bar closes when caffe quits or stops reporting for a minute.
+caffe uses two calls. `PUT /api/bars/{name}` replaces a bar with caffe's snapshot, and `DELETE /api/bars/{name}` closes it. Both take `Authorization: Bearer …` when `BOARD_TOKEN` is set.
 
-```sh
-CAFFE_BOARD_URL=https://your-board.example CAFFE_BOARD_TOKEN=… caffe
+```json
+{
+  "cat": {"name": "Miso", "title": "Miso the calico cat", "coat": "#f6f2e8", "shade": "#403834", "eyes": "#84be48"},
+  "tally": "1 brewing · 1 idle",
+  "awake": 95,
+  "cards": [
+    {"id": "d5883a0d8b", "kind": "session", "agent": "claude", "name": "Claude", "where": "",
+     "state": "brewing", "status": "brewing 1m", "note": "5% cpu"}
+  ]
+}
 ```
 
-The API is one call that replaces a bar's sessions, and one that closes it:
-
-```sh
-curl -X PUT https://your-board.example/api/bars/Miso \
-  -H 'Authorization: Bearer …' \
-  -d '{"sessions": [{"agent": "claude", "state": "brewing", "since": 95}]}'
-curl -X DELETE https://your-board.example/api/bars/Miso -H 'Authorization: Bearer …'
-```
-
-`agent` is one of `claude`, `codex`, `copilot`, `opencode` or `pi`, `state` is one of `brewing`, `ready`, `idle` or `cold`, and `since` is how many seconds the session has been in that state.
+`kind` is `session` or `app`. `agent` is one of `claude`, `codex`, `copilot`, `opencode`, `pi`, `vscode` or `t3`. `state` is one of `brewing`, `ready`, `idle`, `cold`, `pouring` or `served` for sessions, and `busy`, `open` or `closed` for apps.
 
 ## License
 

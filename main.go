@@ -1,6 +1,7 @@
-// caffe board is a coffee bar for the room: order a cup for the coding agent
-// you work with, and see who else did. Every cup remembers the pod that
-// poured it, so you can watch the cluster share the work.
+// caffe board puts caffe's table on the web: every terminal running caffe with
+// CAFFE_BOARD_URL set shows its agent sessions, open apps and barista cat here,
+// as they look in the terminal. The pods serving the page are listed as
+// baristas, so you can watch the cluster share the work.
 package main
 
 import (
@@ -16,6 +17,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
@@ -25,103 +27,70 @@ import (
 //go:embed templates/index.html
 var templateFS embed.FS
 
-// agent is a drink on the menu, in the same colours as caffe in the terminal.
-type agent struct {
-	ID    string
-	Name  string
-	Color string
+// drinks are the agents and apps caffe serves, in caffe's colours.
+var drinks = map[string]string{
+	"claude":   "#de7d5a",
+	"codex":    "#56a0f5",
+	"copilot":  "#a78bfa",
+	"opencode": "#e870a0",
+	"pi":       "#6ec478",
+	"vscode":   "#28bed2",
+	"t3":       "#8a8a96",
 }
 
-var menu = []agent{
-	{"claude", "Claude", "#de7d5a"},
-	{"codex", "Codex", "#56a0f5"},
-	{"copilot", "Copilot", "#a78bfa"},
-	{"opencode", "OpenCode", "#e870a0"},
-	{"pi", "Pi", "#6ec478"},
-	{"human", "Just me", "#b98a5a"},
+// states are what caffe says a card is doing.
+var states = map[string]bool{
+	"brewing": true, "ready": true, "idle": true, "cold": true, "pouring": true, "served": true,
+	"busy": true, "open": true, "closed": true,
 }
 
-// apps are the editors and agent apps caffe serves a latte. They show on a
-// bar but are not on the order menu.
-var apps = []agent{
-	{"vscode", "VS Code", "#28bed2"},
-	{"t3", "T3 Code", "#8a8a96"},
+// card is one card at a bar, with the same lines as in the terminal.
+type card struct {
+	ID     string `json:"id"`
+	Kind   string `json:"kind"`
+	Agent  string `json:"agent"`
+	Name   string `json:"name"`
+	Where  string `json:"where"`
+	State  string `json:"state"`
+	Status string `json:"status"`
+	Note   string `json:"note"`
 }
 
-func findAgent(id string) (agent, bool) {
-	for _, item := range menu {
-		if item.ID == id {
-			return item, true
-		}
-	}
-	return agent{}, false
+// cat is the bar's barista, coat and all.
+type cat struct {
+	Name  string `json:"name"`
+	Title string `json:"title"`
+	Coat  string `json:"coat"`
+	Shade string `json:"shade"`
+	Eyes  string `json:"eyes"`
 }
 
-type cup struct {
-	ID      int
-	Fresh   bool
-	Name    string
-	Agent   agent
-	Note    string
-	Pod     string
-	PodTint string
-	Short   string
-	Ago     string
+// snapshot is what caffe sends every 10 seconds.
+type snapshot struct {
+	Cat   cat    `json:"cat"`
+	Tally string `json:"tally"`
+	Awake int    `json:"awake"`
+	Cards []card `json:"cards"`
 }
 
-type tally struct {
-	Agent agent
-	Count int
-}
-
-// sip is one session or open app at a laptop's bar, as caffe reports it.
-type sip struct {
-	Agent agent
-	App   bool
-	State string
-	For   string
-}
-
-// findDrink looks up what a bar can serve: any agent, or an app.
-func findDrink(id string) (agent, bool) {
-	if id == "human" {
-		return agent{}, false
-	}
-	if item, ok := findAgent(id); ok {
-		return item, true
-	}
-	for _, item := range apps {
-		if item.ID == id {
-			return item, true
-		}
-	}
-	return agent{}, false
-}
-
-// bar is a laptop running caffe with the board turned on.
 type bar struct {
-	Name     string
-	Sessions []sip
+	Name string
+	snapshot
 }
 
-// barista is a pod and how many cups it has poured.
+// barista is a pod serving the board, and how many caffe updates it took.
 type barista struct {
-	Pod   string
-	Tint  string
-	Count int
+	Pod     string
+	Tint    string
+	Updates int
 }
 
 type pageData struct {
-	Menu     []agent
 	Bars     []bar
 	Baristas []barista
-	Newest   *cup
-	Cups     []cup
-	Tally    []tally
-	Total    int
 	Pod      string
 	PodTint  string
-	Pods     int
+	BoardURL string
 	DBStatus string
 	DBError  string
 	Version  string
@@ -135,10 +104,15 @@ var (
 	listenOn = ":" + envOr("PORT", "8080")
 	// boardToken, when set, is the bearer token caffe must send to update a bar.
 	boardToken = os.Getenv("BOARD_TOKEN")
+	hexColor   = regexp.MustCompile(`^#[0-9a-f]{6}$`)
 )
 
-// barTimeout is how long a bar stays open after caffe last reported.
-const barTimeout = time.Minute
+const (
+	// barTimeout is how long a bar stays open after caffe last reported.
+	barTimeout = time.Minute
+	// heartbeat is how often a pod tells the others it is still serving.
+	heartbeat = 15 * time.Second
+)
 
 func envOr(key, fallback string) string {
 	if value := os.Getenv(key); value != "" {
@@ -185,18 +159,15 @@ func databaseURL() string {
 }
 
 const schema = `
-CREATE TABLE IF NOT EXISTS cups (
-  id      SERIAL PRIMARY KEY,
-  name    TEXT NOT NULL,
-  agent   TEXT NOT NULL,
-  note    TEXT NOT NULL DEFAULT '',
-  pod     TEXT NOT NULL,
-  created TIMESTAMPTZ NOT NULL DEFAULT now()
-);
 CREATE TABLE IF NOT EXISTS bars (
   name     TEXT PRIMARY KEY,
-  sessions JSONB NOT NULL,
+  snapshot JSONB NOT NULL,
   updated  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS pods (
+  name    TEXT PRIMARY KEY,
+  updates BIGINT NOT NULL DEFAULT 0,
+  seen    TIMESTAMPTZ NOT NULL DEFAULT now()
 );`
 
 // schemaLock serialises the schema setup when several replicas start at once;
@@ -246,123 +217,69 @@ func connect(ctx context.Context) error {
 	return fmt.Errorf("database unreachable after 30 attempts: %w", lastErr)
 }
 
-func span(d time.Duration) string {
-	switch {
-	case d < time.Minute:
-		return "just now"
-	case d < time.Hour:
-		return fmt.Sprintf("%d min", int(d.Minutes()))
-	default:
-		return fmt.Sprintf("%d h", int(d.Hours()))
+// beat keeps this pod on the list of baristas.
+func beat(ctx context.Context) {
+	if _, err := db.ExecContext(ctx,
+		`INSERT INTO pods (name, seen) VALUES ($1, now())
+		 ON CONFLICT (name) DO UPDATE SET seen = now()`, podName); err != nil {
+		log.Printf("heartbeat failed: %v", err)
 	}
 }
 
-// short is the part of a pod name that tells replicas apart.
-func short(pod string) string {
-	if i := strings.LastIndex(pod, "-"); i >= 0 && i < len(pod)-1 {
-		return pod[i+1:]
+func clip(value string, limit int) string {
+	value = strings.TrimSpace(value)
+	if runes := []rune(value); len(runes) > limit {
+		return string(runes[:limit])
 	}
-	return pod
+	return value
 }
 
-func ago(t time.Time) string {
-	d := time.Since(t)
-	switch {
-	case d < time.Minute:
-		return "just now"
-	case d < time.Hour:
-		return fmt.Sprintf("%d min ago", int(d.Minutes()))
-	case d < 24*time.Hour:
-		return fmt.Sprintf("%d h ago", int(d.Hours()))
-	default:
-		return t.Format("2 Jan")
+func colorOr(value, fallback string) string {
+	if hexColor.MatchString(value) {
+		return value
 	}
+	return fallback
+}
+
+// clean keeps what the page can show from what caffe sent, and drops the rest.
+func clean(in snapshot) snapshot {
+	out := snapshot{
+		Cat: cat{
+			Name:  clip(in.Cat.Name, 24),
+			Title: clip(in.Cat.Title, 48),
+			Coat:  colorOr(in.Cat.Coat, "#36363e"),
+			Shade: colorOr(in.Cat.Shade, "#36363e"),
+			Eyes:  colorOr(in.Cat.Eyes, "#e8c846"),
+		},
+		Tally: clip(in.Tally, 60),
+		Awake: max(in.Awake, 0),
+		Cards: []card{},
+	}
+	for _, c := range in.Cards {
+		if _, ok := drinks[c.Agent]; !ok || !states[c.State] || (c.Kind != "session" && c.Kind != "app") {
+			continue
+		}
+		out.Cards = append(out.Cards, card{
+			ID:     clip(c.ID, 16),
+			Kind:   c.Kind,
+			Agent:  c.Agent,
+			Name:   clip(c.Name, 24),
+			Where:  clip(c.Where, 48),
+			State:  c.State,
+			Status: clip(c.Status, 60),
+			Note:   clip(c.Note, 80),
+		})
+		if len(out.Cards) == 24 {
+			break
+		}
+	}
+	return out
 }
 
 func loadPage(ctx context.Context, data *pageData) error {
 	rows, err := db.QueryContext(ctx,
-		`SELECT id, name, agent, note, pod, created FROM cups ORDER BY id DESC LIMIT 60`)
-	if err != nil {
-		return err
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var item cup
-		var agentID string
-		var created time.Time
-		if err := rows.Scan(&item.ID, &item.Name, &agentID, &item.Note, &item.Pod, &created); err != nil {
-			return err
-		}
-		item.Agent, _ = findAgent(agentID)
-		item.PodTint = tint(item.Pod)
-		item.Short = short(item.Pod)
-		item.Ago = ago(created)
-		item.Fresh = time.Since(created) < 2*time.Minute
-		data.Cups = append(data.Cups, item)
-	}
-	if err := rows.Err(); err != nil {
-		return err
-	}
-
-	counts := map[string]int{}
-	rows, err = db.QueryContext(ctx, `SELECT agent, count(*) FROM cups GROUP BY agent`)
-	if err != nil {
-		return err
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var id string
-		var n int
-		if err := rows.Scan(&id, &n); err != nil {
-			return err
-		}
-		counts[id] = n
-		data.Total += n
-	}
-	if err := rows.Err(); err != nil {
-		return err
-	}
-	for _, item := range menu {
-		data.Tally = append(data.Tally, tally{item, counts[item.ID]})
-	}
-
-	if len(data.Cups) > 0 {
-		data.Newest = &data.Cups[0]
-	}
-
-	rows, err = db.QueryContext(ctx,
-		`SELECT pod, count(*) FROM cups GROUP BY pod ORDER BY count(*) DESC, pod`)
-	if err != nil {
-		return err
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var item barista
-		if err := rows.Scan(&item.Pod, &item.Count); err != nil {
-			return err
-		}
-		item.Tint = tint(item.Pod)
-		data.Baristas = append(data.Baristas, item)
-	}
-	if err := rows.Err(); err != nil {
-		return err
-	}
-	data.Pods = len(data.Baristas)
-	return loadBars(ctx, data)
-}
-
-// stored is a session as the bars table keeps it.
-type stored struct {
-	Kind  string    `json:"kind,omitempty"`
-	Agent string    `json:"agent"`
-	State string    `json:"state"`
-	Since time.Time `json:"since"`
-}
-
-func loadBars(ctx context.Context, data *pageData) error {
-	rows, err := db.QueryContext(ctx,
-		`SELECT name, sessions FROM bars WHERE updated > now() - $1::interval ORDER BY name`,
-		fmt.Sprintf("%d seconds", int(barTimeout.Seconds())))
+		`SELECT name, snapshot FROM bars WHERE updated > now() - make_interval(secs => $1) ORDER BY name`,
+		barTimeout.Seconds())
 	if err != nil {
 		return err
 	}
@@ -373,46 +290,55 @@ func loadBars(ctx context.Context, data *pageData) error {
 		if err := rows.Scan(&item.Name, &raw); err != nil {
 			return err
 		}
-		var sessions []stored
-		if err := json.Unmarshal(raw, &sessions); err != nil {
+		if err := json.Unmarshal(raw, &item.snapshot); err != nil {
 			return err
 		}
-		for _, s := range sessions {
-			a, _ := findDrink(s.Agent)
-			item.Sessions = append(item.Sessions, sip{a, s.Kind == "app", s.State, span(time.Since(s.Since))})
-		}
 		data.Bars = append(data.Bars, item)
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+
+	rows, err = db.QueryContext(ctx,
+		`SELECT name, updates FROM pods WHERE seen > now() - make_interval(secs => $1) ORDER BY name`,
+		(4 * heartbeat).Seconds())
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var item barista
+		if err := rows.Scan(&item.Pod, &item.Updates); err != nil {
+			return err
+		}
+		item.Tint = tint(item.Pod)
+		data.Baristas = append(data.Baristas, item)
 	}
 	return rows.Err()
 }
 
-var (
-	sessionStates = map[string]bool{"brewing": true, "ready": true, "idle": true, "cold": true}
-	appStates     = map[string]bool{"busy": true, "open": true}
-)
-
-// valid says whether a bar can show this: an agent session in one of its
-// states, or an open app, busy or open.
-func valid(kind, id, state string) bool {
-	switch kind {
-	case "":
-		_, ok := findAgent(id)
-		return ok && id != "human" && sessionStates[state]
-	case "app":
-		_, ok := findDrink(id)
-		return ok && appStates[state]
+// boardURL is this page's address, for the command that points caffe here.
+func boardURL(request *http.Request) string {
+	scheme := "http"
+	if request.TLS != nil || request.Header.Get("X-Forwarded-Proto") == "https" {
+		scheme = "https"
 	}
-	return false
+	return scheme + "://" + request.Host
 }
 
-// report is what caffe sends: each session or app, its state, and seconds in it.
-type report struct {
-	Sessions []struct {
-		Kind  string  `json:"kind"`
-		Agent string  `json:"agent"`
-		State string  `json:"state"`
-		Since float64 `json:"since"`
-	} `json:"sessions"`
+func handleIndex(writer http.ResponseWriter, request *http.Request) {
+	data := pageData{
+		Pod: podName, PodTint: tint(podName), BoardURL: boardURL(request),
+		Version: version, DBStatus: "connected",
+	}
+	if err := loadPage(request.Context(), &data); err != nil {
+		data.DBStatus = "error"
+		data.DBError = err.Error()
+	}
+	writer.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if err := tmpl.Execute(writer, data); err != nil {
+		log.Printf("render failed: %v", err)
+	}
 }
 
 func authorized(request *http.Request) bool {
@@ -423,35 +349,30 @@ func authorized(request *http.Request) bool {
 	return subtle.ConstantTimeCompare([]byte(got), []byte(boardToken)) == 1
 }
 
-// handlePutBar replaces a bar's sessions with caffe's latest snapshot.
+// handlePutBar stores caffe's latest snapshot of a bar.
 func handlePutBar(writer http.ResponseWriter, request *http.Request) {
 	if !authorized(request) {
 		http.Error(writer, "unauthorized", http.StatusUnauthorized)
 		return
 	}
 	name := clip(request.PathValue("name"), 40)
-	var body report
+	var body snapshot
 	if err := json.NewDecoder(http.MaxBytesReader(writer, request.Body, 64<<10)).Decode(&body); err != nil || name == "" {
 		http.Error(writer, "bad request", http.StatusBadRequest)
 		return
 	}
-	now := time.Now()
-	sessions := []stored{}
-	for _, s := range body.Sessions {
-		if !valid(s.Kind, s.Agent, s.State) || len(sessions) == 24 {
-			continue
-		}
-		since := now.Add(-time.Duration(max(s.Since, 0) * float64(time.Second)))
-		sessions = append(sessions, stored{s.Kind, s.Agent, s.State, since})
-	}
-	raw, _ := json.Marshal(sessions)
+	raw, _ := json.Marshal(clean(body))
 	if _, err := db.ExecContext(request.Context(),
-		`INSERT INTO bars (name, sessions, updated) VALUES ($1, $2, now())
-		 ON CONFLICT (name) DO UPDATE SET sessions = EXCLUDED.sessions, updated = now()`,
+		`INSERT INTO bars (name, snapshot, updated) VALUES ($1, $2, now())
+		 ON CONFLICT (name) DO UPDATE SET snapshot = EXCLUDED.snapshot, updated = now()`,
 		name, raw); err != nil {
 		log.Printf("bar update failed: %v", err)
 		http.Error(writer, "database error", http.StatusInternalServerError)
 		return
+	}
+	if _, err := db.ExecContext(request.Context(),
+		`UPDATE pods SET updates = updates + 1 WHERE name = $1`, podName); err != nil {
+		log.Printf("count update failed: %v", err)
 	}
 	writer.WriteHeader(http.StatusNoContent)
 }
@@ -470,49 +391,6 @@ func handleDeleteBar(writer http.ResponseWriter, request *http.Request) {
 	writer.WriteHeader(http.StatusNoContent)
 }
 
-func clip(value string, limit int) string {
-	value = strings.TrimSpace(value)
-	if runes := []rune(value); len(runes) > limit {
-		return string(runes[:limit])
-	}
-	return value
-}
-
-func handleIndex(writer http.ResponseWriter, request *http.Request) {
-	if request.URL.Path != "/" {
-		http.NotFound(writer, request)
-		return
-	}
-
-	if request.Method == http.MethodPost {
-		name := clip(request.FormValue("name"), 40)
-		if name == "" {
-			name = "anonymous"
-		}
-		note := clip(request.FormValue("note"), 80)
-		if item, ok := findAgent(request.FormValue("agent")); ok {
-			if _, err := db.ExecContext(request.Context(),
-				`INSERT INTO cups (name, agent, note, pod) VALUES ($1, $2, $3, $4)`,
-				name, item.ID, note, podName); err != nil {
-				log.Printf("insert failed: %v", err)
-			}
-		}
-		http.Redirect(writer, request, "/", http.StatusSeeOther)
-		return
-	}
-
-	data := pageData{Menu: menu, Pod: podName, PodTint: tint(podName), Version: version, DBStatus: "connected"}
-	if err := loadPage(request.Context(), &data); err != nil {
-		data.DBStatus = "error"
-		data.DBError = err.Error()
-	}
-
-	writer.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := tmpl.Execute(writer, data); err != nil {
-		log.Printf("render failed: %v", err)
-	}
-}
-
 // handleHealthz is the readiness gate: not ready until the database answers.
 func handleHealthz(writer http.ResponseWriter, request *http.Request) {
 	if db == nil {
@@ -528,21 +406,44 @@ func handleHealthz(writer http.ResponseWriter, request *http.Request) {
 	fmt.Fprintln(writer, "ok")
 }
 
+// span is a duration the way caffe writes it.
+func span(seconds int) string {
+	d := time.Duration(seconds) * time.Second
+	switch {
+	case d < time.Minute:
+		return fmt.Sprintf("%ds", seconds)
+	case d < time.Hour:
+		return fmt.Sprintf("%dm", int(d.Minutes()))
+	default:
+		return fmt.Sprintf("%dh %dm", int(d.Hours()), int(d.Minutes())%60)
+	}
+}
+
 func main() {
 	var err error
-	tmpl, err = template.ParseFS(templateFS, "templates/index.html")
+	tmpl, err = template.New("index.html").Funcs(template.FuncMap{
+		"color": func(agent string) string { return drinks[agent] },
+		"span":  span,
+	}).ParseFS(templateFS, "templates/index.html")
 	if err != nil {
 		log.Fatalf("parse template: %v", err)
 	}
 
-	if err := connect(context.Background()); err != nil {
+	ctx := context.Background()
+	if err := connect(ctx); err != nil {
 		log.Fatalf("startup: %v", err)
 	}
+	beat(ctx)
+	go func() {
+		for range time.Tick(heartbeat) {
+			beat(ctx)
+		}
+	}()
 	log.Printf("connected to postgres, serving on %s as pod %s", listenOn, podName)
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/", handleIndex)
-	mux.HandleFunc("/healthz", handleHealthz)
+	mux.HandleFunc("GET /{$}", handleIndex)
+	mux.HandleFunc("GET /healthz", handleHealthz)
 	mux.HandleFunc("PUT /api/bars/{name}", handlePutBar)
 	mux.HandleFunc("DELETE /api/bars/{name}", handleDeleteBar)
 
