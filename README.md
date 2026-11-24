@@ -1,6 +1,6 @@
 # ☕ caffe board
 
-[caffe](https://github.com/alexgnq/caffe) on the web. Every terminal running caffe with this board's address shows its table here the way it looks in the terminal: the same cards with the same lines, the tally, and the barista cat, coat and all. When a session is ready for you, the cat runs under its card and calls it out.
+[caffe](https://github.com/alexgnq/caffe) on the web. Every terminal running caffe with this board's address shows its table here the way it looks in the terminal: the same cards with the same lines, the tally, and the barista cat, coat and all, or the capybara on its turtle. When a session is ready for you, the cat runs under its card and calls it out.
 
 The pods serving the page are listed as baristas, with how many caffe updates each one took. Scale to a few replicas and you can watch them share the work.
 
@@ -43,7 +43,8 @@ caffe uses two calls. `PUT /api/bars/{name}` replaces a bar with caffe's snapsho
 
 ```json
 {
-  "cat": {"name": "Miso", "title": "Miso the calico cat", "coat": "#f6f2e8", "shade": "#403834", "eyes": "#84be48"},
+  "cat": {"kind": "cat", "name": "Miso", "title": "Miso the calico cat",
+          "coat": "#f6f2e8", "shade": "#403834", "eyes": "#84be48", "shell": "#cc6254"},
   "tally": "1 brewing · 1 idle",
   "awake": 95,
   "cards": [
@@ -53,7 +54,7 @@ caffe uses two calls. `PUT /api/bars/{name}` replaces a bar with caffe's snapsho
 }
 ```
 
-`kind` is `session` or `app`. `agent` is one of `claude`, `codex`, `copilot`, `opencode`, `pi`, `vscode` or `t3`. `state` is one of `brewing`, `ready`, `idle`, `cold`, `pouring` or `served` for sessions, and `busy`, `open` or `closed` for apps.
+The cat's `kind` is `cat`, or `capybara` in caffe's capybara mode, where it rides a turtle with a `shell` of that colour and apps get boba tea. A card's `kind` is `session` or `app`. `agent` is one of `claude`, `codex`, `copilot`, `opencode`, `pi`, `vscode` or `t3`. `state` is one of `brewing`, `ready`, `idle`, `cold`, `pouring` or `served` for sessions, and `busy`, `open` or `closed` for apps.
 
 ## License
 

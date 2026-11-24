@@ -56,13 +56,16 @@ type card struct {
 	Note   string `json:"note"`
 }
 
-// cat is the bar's barista, coat and all.
+// cat is the bar's barista, coat and all. Kind is "cat", or "capybara" for
+// caffe's capybara mode, where it rides a turtle with a Shell of this colour.
 type cat struct {
+	Kind  string `json:"kind"`
 	Name  string `json:"name"`
 	Title string `json:"title"`
 	Coat  string `json:"coat"`
 	Shade string `json:"shade"`
 	Eyes  string `json:"eyes"`
+	Shell string `json:"shell"`
 }
 
 // snapshot is what caffe sends every 10 seconds.
@@ -245,15 +248,20 @@ func colorOr(value, fallback string) string {
 func clean(in snapshot) snapshot {
 	out := snapshot{
 		Cat: cat{
+			Kind:  "cat",
 			Name:  clip(in.Cat.Name, 24),
 			Title: clip(in.Cat.Title, 48),
 			Coat:  colorOr(in.Cat.Coat, "#36363e"),
 			Shade: colorOr(in.Cat.Shade, "#36363e"),
 			Eyes:  colorOr(in.Cat.Eyes, "#e8c846"),
+			Shell: colorOr(in.Cat.Shell, "#568ccc"),
 		},
 		Tally: clip(in.Tally, 60),
 		Awake: max(in.Awake, 0),
 		Cards: []card{},
+	}
+	if in.Cat.Kind == "capybara" {
+		out.Cat.Kind = "capybara"
 	}
 	for _, c := range in.Cards {
 		if _, ok := drinks[c.Agent]; !ok || !states[c.State] || (c.Kind != "session" && c.Kind != "app") {

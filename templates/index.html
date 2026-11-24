@@ -22,6 +22,7 @@
     --espresso: #6b4632;
     --milk: #d8bb94;
     --foam: #f6ecdc;
+    --pearl: #2b1f1c;
     --gold: #a8740a;
     --cold: #6f8fae;
     --live: #1f8f4e;
@@ -93,6 +94,14 @@
   .cup-body { fill: var(--porcelain); stroke: var(--porcelain-edge); stroke-width: 1; }
   .cup-handle { fill: none; stroke: var(--porcelain-edge); stroke-width: 3.5; }
   .cup-band, .latte-coaster { fill: var(--c); }
+  .boba-tea { fill: color-mix(in srgb, var(--c) 75%, var(--milk)); }
+  .boba-top { fill: color-mix(in srgb, var(--c) 40%, var(--foam)); }
+  .boba-straw { fill: color-mix(in srgb, var(--c) 45%, var(--glass)); }
+  .pearl { fill: var(--pearl); }
+  .sip { fill: var(--pearl); opacity: var(--sip, 0); animation: sip 1.4s linear infinite; }
+  .sip + .sip { animation-delay: .7s; }
+  .card.busy { --sip: 1; }
+  @keyframes sip { from { transform: translateY(0); } to { transform: translateY(-34px); } }
   .latte-glass { fill: var(--glass); fill-opacity: .35; stroke: var(--porcelain-edge); stroke-width: 1; }
   .biscuit { fill: #d6a060; opacity: var(--biscuit, 0); }
   .card.ready { --biscuit: 1; }
@@ -130,6 +139,19 @@
   @keyframes step { from { transform: rotate(18deg); } to { transform: rotate(-18deg); } }
   @keyframes swish { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(14deg); } }
   @keyframes zzz { 0% { opacity: 0; transform: translateY(2px); } 30% { opacity: 1; } 100% { opacity: 0; transform: translateY(-8px); } }
+  /* Capybara mode: the barista sits up on a turtle, and the turtle does the walking, at half a cat's pace. */
+  .cat .capy { fill: #c68654; stroke: #6e4a34; stroke-width: .8; }
+  .cat .capy-dark { fill: #84583e; }
+  .cat .turtle { fill: #9ec468; stroke: #4e703e; stroke-width: .8; }
+  .cat .belly { fill: #f0c462; stroke: #4e703e; stroke-width: .8; }
+  .cat .shell { fill: var(--shell); stroke: color-mix(in srgb, var(--shell), #000 45%); stroke-width: 1; }
+  .cat .seam { fill: none; stroke: color-mix(in srgb, var(--shell), #000 45%); stroke-width: .9; stroke-linejoin: round; }
+  .cat .rim { fill: color-mix(in srgb, var(--shell), #000 18%); stroke: color-mix(in srgb, var(--shell), #000 45%); stroke-width: .7; }
+  .cat .dark, .cat[data-kind="capybara"] .eye { fill: #1e1a18; stroke: none; }
+  .cat .mouth { fill: none; stroke: #1e1a18; stroke-width: .8; stroke-linecap: round; }
+  .cat[data-kind="capybara"][data-mode] .leg { animation-duration: .84s; }
+  .cat[data-kind="capybara"][data-mode="run"] .leg { animation-duration: .4s; }
+  .cat[data-kind="capybara"][data-mode="sleep"] .body { transform: translateY(3px); }
   .say {
     position: absolute; bottom: 46px; left: 0; white-space: nowrap; padding: 5px 9px;
     background: var(--bg); border: 1px solid var(--line); border-radius: 8px; font: 500 12px var(--mono); color: var(--ink);
@@ -185,6 +207,17 @@
     <path fill="var(--foam)" d="M16.3 14 h23.4 l-.5 7 h-22.4 z"/>
     <path class="latte-glass" d="M15 11 h26 l-2.3 34 q-.4 5.5 -5.5 5.5 h-10.4 q-5.1 0 -5.5 -5.5 z"/>
   </symbol>
+  <symbol id="boba" viewBox="0 0 56 56" overflow="visible">
+    <rect class="latte-coaster" x="11" y="49" width="34" height="4" rx="2"/>
+    <path class="boba-tea" d="M16.1 20 h23.8 l-1.7 25 q-.4 5 -5 5 h-10.4 q-4.6 0 -5 -5 z"/>
+    <path class="boba-top" d="M16.4 15 h23.2 l-.3 5 h-22.6 z"/>
+    <g class="pearl"><circle cx="21" cy="46" r="2.2"/><circle cx="25.6" cy="46.8" r="2.2"/><circle cx="30.2" cy="46.8" r="2.2"/><circle cx="34.8" cy="46" r="2.2"/><circle cx="23.3" cy="42.2" r="2.2"/><circle cx="28" cy="42.6" r="2.2"/><circle cx="32.6" cy="42.2" r="2.2"/></g>
+    <g transform="rotate(9 30 30)">
+      <rect class="boba-straw" x="27" y="1" width="6" height="44" rx="2"/>
+      <circle class="sip" cx="30" cy="38" r="2"/><circle class="sip" cx="30" cy="38" r="2"/>
+    </g>
+    <path class="latte-glass" d="M15 11 h26 l-2.3 34 q-.4 5.5 -5.5 5.5 h-10.4 q-5.1 0 -5.5 -5.5 z"/>
+  </symbol>
 </svg>
 <div class="wrap">
   <header class="top">
@@ -199,6 +232,7 @@
 
   <div id="bars">
     {{range .Bars}}
+    {{$capy := eq .Cat.Kind "capybara"}}
     <article class="bar" data-name="{{.Name}}" aria-label="{{.Name}}'s bar">
       <header class="bar-head">
         <span class="bar-name">☕ {{.Name}}</span>
@@ -208,7 +242,7 @@
       <div class="cards">
         {{range .Cards}}
         <div class="card {{.State}}" data-id="{{.ID}}" data-call="{{.Name}}{{if and .Where (ne .Where "app")}} in {{.Where}}{{end}} is ready" style="--c: {{color .Agent}}">
-          <svg viewBox="0 0 56 56" aria-hidden="true"><use href="{{if eq .Kind "app"}}#latte{{else}}#cup{{end}}"/><g class="steam"><path d="M20 11 q-3 -4 0 -8"/><path d="M29 11 q3 -4 0 -8"/></g></svg>
+          <svg viewBox="0 0 56 56" aria-hidden="true"><use href="{{if ne .Kind "app"}}#cup{{else if $capy}}#boba{{else}}#latte{{end}}"/><g class="steam"><path d="M20 11 q-3 -4 0 -8"/><path d="M29 11 q3 -4 0 -8"/></g></svg>
           <div class="lines">
             <div class="title"><b>{{.Name}}</b>{{if .Where}} <span>{{.Where}}</span>{{end}}</div>
             <div class="status">{{.Status}}</div>
@@ -220,8 +254,8 @@
         {{end}}
       </div>
       <div class="table">
-        <div class="cat" data-mode="sit" data-dir="1" style="--coat: {{.Cat.Coat}}; --shade: {{.Cat.Shade}}; --eyes: {{.Cat.Eyes}}">
-          <button type="button" aria-label="Pet {{.Cat.Name}}">{{template "catsvg"}}</button>
+        <div class="cat" data-kind="{{.Cat.Kind}}" data-mode="sit" data-dir="1" style="--coat: {{.Cat.Coat}}; --shade: {{.Cat.Shade}}; --eyes: {{.Cat.Eyes}}; --shell: {{.Cat.Shell}}">
+          <button type="button" aria-label="Pet {{.Cat.Name}}">{{if $capy}}{{template "capysvg"}}{{else}}{{template "catsvg"}}{{end}}</button>
           <div class="say" role="status" hidden></div>
         </div>
       </div>
@@ -305,7 +339,8 @@
     me.tick = (now, dt) => {
       me.x = Math.min(me.x, room());
       if (me.mode === "walk" || me.mode === "run") {
-        const gap = me.target - me.x, stride = me.speed * dt;
+        const pace = el.dataset.kind === "capybara" ? 0.5 : 1;
+        const gap = me.target - me.x, stride = me.speed * pace * dt;
         if (Math.abs(gap) <= stride) {
           me.x = me.target;
           if (me.arrive) { const done = me.arrive; me.arrive = null; done(); }
@@ -394,8 +429,12 @@
           const old = cat.bar.querySelector(part), updated = next.querySelector(part);
           if (old && updated) old.replaceWith(updated);
         }
-        const catEl = cat.bar.querySelector(".cat");
-        catEl.setAttribute("style", next.querySelector(".cat").getAttribute("style"));
+        const catEl = cat.bar.querySelector(".cat"), nextCat = next.querySelector(".cat");
+        catEl.setAttribute("style", nextCat.getAttribute("style"));
+        if (catEl.dataset.kind !== nextCat.dataset.kind) {
+          catEl.dataset.kind = nextCat.dataset.kind;
+          catEl.querySelector("button svg").replaceWith(nextCat.querySelector("button svg"));
+        }
         catEl.style.transform = `translateX(${cat.x}px)`;
         const ready = readyIds(cat.bar);
         const fresh = [...ready].find((id) => !cat.ready.has(id));
@@ -423,6 +462,36 @@
         <path class="patch" d="M44.5 12 L45.5 3 L50.5 9.5 Z"/>
         <path class="patch" d="M52 9.5 L57 3 L58.5 12 Z"/>
         <ellipse class="eye" cx="54.5" cy="16" rx="1.4" ry="1.7"/>
+      </g>
+    </g>
+</svg>{{end}}
+{{define "capysvg"}}<svg viewBox="0 0 64 44" aria-hidden="true">
+    <g class="flip">
+      <text class="zzz" x="52" y="2">z</text>
+      <path class="turtle" d="M14 34 l-6 2.2 l6 1.6 z"/>
+      <rect class="leg turtle" x="17" y="34" width="5" height="8.5" rx="2.4"/>
+      <rect class="leg b turtle" x="24" y="34" width="5" height="8.5" rx="2.4"/>
+      <rect class="leg b turtle" x="37" y="34" width="5" height="8.5" rx="2.4"/>
+      <rect class="leg turtle" x="44" y="34" width="5" height="8.5" rx="2.4"/>
+      <rect class="turtle" x="44" y="29.5" width="10" height="5" rx="2.5" transform="rotate(-28 47 32)"/>
+      <circle class="turtle" cx="54.5" cy="27.5" r="4.4"/>
+      <circle class="dark" cx="56" cy="26.6" r=".95"/>
+      <ellipse class="belly" cx="32" cy="36.2" rx="17" ry="2.4"/>
+      <path class="shell" d="M14 35.5 A18 11.5 0 0 1 50 35.5 Z"/>
+      <path class="seam" d="M19 35.5 L22.5 29.5 H41.5 L45 35.5 M22.5 29.5 L20.5 26.5 M41.5 29.5 L43.5 26.5 M32 29.5 V24.2"/>
+      <rect class="rim" x="13" y="34" width="38" height="3" rx="1.5"/>
+      <g class="body">
+        <ellipse class="capy" cx="28" cy="17.5" rx="11.5" ry="8"/>
+        <ellipse class="capy-dark" cx="23.5" cy="25.2" rx="3.6" ry="1.5"/>
+        <ellipse class="capy-dark" cx="30.5" cy="25.4" rx="3.6" ry="1.5"/>
+        <ellipse class="capy-dark" cx="36.5" cy="5.2" rx="2.1" ry="2.4"/>
+        <rect class="capy-dark" x="40" y="5.5" width="10.5" height="11.5" rx="4.6"/>
+        <rect class="capy" x="32.5" y="5.5" width="13" height="11.5" rx="5"/>
+        <ellipse class="eye" cx="40" cy="9.6" rx="1.2" ry="1.4"/>
+        <ellipse class="dark" cx="48.6" cy="8.8" rx=".8" ry=".6"/>
+        <path class="mouth" d="M45.5 14 h3.6"/>
+        <rect class="capy" x="34.5" y="17" width="4" height="8.5" rx="2" transform="rotate(-22 36.5 18)"/>
+        <ellipse class="capy-dark" cx="40" cy="24" rx="2.1" ry="1.6"/>
       </g>
     </g>
 </svg>{{end}}
