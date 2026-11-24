@@ -62,7 +62,8 @@
 
   /* Header */
   .top { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; }
-  .mark { font: 800 22px/1 var(--display); letter-spacing: -0.02em; color: var(--ink); text-decoration: none; }
+  .mark { display: inline-flex; gap: 6px; align-items: flex-end; font: 800 22px/1 var(--display); letter-spacing: -0.02em; color: var(--ink); text-decoration: none; }
+  .logo { width: 30px; height: 30px; margin-bottom: -3px; overflow: visible; --c: var(--gold); }
   .mark span { font-weight: 400; color: var(--muted); margin-left: 2px; }
   .served { margin: 0; display: flex; gap: 8px; align-items: center; color: var(--muted); font-size: 13px; min-width: 0; }
   .served code { font-size: 12px; color: var(--ink); overflow-wrap: anywhere; }
@@ -70,10 +71,31 @@
   h1 { margin: 0; font: 700 clamp(32px, 5.5vw, 48px)/1.05 var(--display); letter-spacing: -0.035em; text-wrap: balance; }
   .lede { margin: 0; max-width: 60ch; color: var(--muted); }
 
+  /* The room: every bar's tally added up */
+  .room { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 28px 0 0; border-block: 1px solid var(--line); }
+  .room div { display: flex; flex-direction: column-reverse; gap: 2px; padding: 14px 16px; min-width: 0; }
+  .room div + div { border-left: 1px solid var(--line); }
+  .room dt { font: 500 11px var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .room dd { margin: 0; font: 800 clamp(30px, 4.5vw, 44px)/1 var(--display); letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+  .room .ready dd { color: var(--gold); }
+  .room .brewing dt::before { content: ""; display: inline-block; width: 7px; height: 7px; margin-right: 6px; border-radius: 50%; background: var(--live); animation: brew 1.6s ease-in-out infinite; }
+  .room dd.bump { animation: bump .7s ease-out; }
+  @keyframes brew { 50% { opacity: .25; } }
+  @keyframes bump { 30% { transform: translateY(-5px); } }
+
   /* A bar: caffe's frame */
   #bars { display: grid; gap: 20px; margin-top: 28px; }
   .bar { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .bar.fresh { animation: pour-in .6s cubic-bezier(.2, .8, .2, 1) both; animation-delay: calc(var(--i, 0) * 90ms); }
+  @keyframes pour-in { from { opacity: 0; transform: translateY(14px) scale(.985); } }
+  /* Like the top edge of caffe's frame: one stripe per card in its agent's colour, gold when it's ready for you. */
+  .edge { position: absolute; inset: 0 0 auto; height: 3px; display: flex; gap: 2px; }
+  .edge i { flex: 1; background: var(--c); }
+  .edge i.ready { background: var(--gold); }
+  .edge i.brewing, .edge i.busy { animation: brew 1.6s ease-in-out infinite; }
+  .edge i.served, .edge i.closed, .edge i.cold { opacity: .3; }
   .bar-head {
+    position: relative;
     display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; padding: 12px 16px;
     border-bottom: 1px solid var(--line); font: 12px var(--mono); color: var(--muted);
   }
@@ -105,6 +127,8 @@
   .latte-glass { fill: var(--glass); fill-opacity: .35; stroke: var(--porcelain-edge); stroke-width: 1; }
   .biscuit { fill: #d6a060; opacity: var(--biscuit, 0); }
   .card.ready { --biscuit: 1; }
+  .card.ready svg { animation: glow 2.4s ease-in-out infinite; }
+  @keyframes glow { 50% { filter: drop-shadow(0 0 7px color-mix(in srgb, var(--gold) 70%, transparent)); } }
   .steam path { fill: none; stroke: var(--muted); stroke-width: 1.8; stroke-linecap: round; opacity: 0; animation: steam 2.6s ease-in-out infinite; }
   .steam path + path { animation-delay: 1.3s; }
   .card:not(.brewing):not(.busy):not(.pouring) .steam { display: none; }
@@ -185,6 +209,9 @@
     .intro { margin-top: 32px; }
     .below { grid-template-columns: minmax(0, 1fr); gap: 36px; }
     .bar-head .tally { margin-left: 0; width: 100%; }
+    .room { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .room div:nth-child(3) { border-left: 0; }
+    .room div:nth-child(n+3) { border-top: 1px solid var(--line); }
   }
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation: none !important; transition: none !important; }
@@ -221,13 +248,19 @@
 </svg>
 <div class="wrap">
   <header class="top">
-    <a class="mark" href="/">caffe<span>board</span></a>
+    <a class="mark" href="/"><svg class="logo" viewBox="0 0 56 56" aria-hidden="true"><use href="#cup"/><g class="steam"><path d="M20 11 q-3 -4 0 -8"/><path d="M29 11 q3 -4 0 -8"/></g></svg>caffe<span>board</span></a>
     <p class="served" id="pod"><span class="dot" style="--c: {{.PodTint}}"></span>Served by <code>{{.Pod}}</code></p>
   </header>
 
   <section class="intro">
     <h1>Agents at work in the room</h1>
     <p class="lede">Every terminal running caffe with this board's address shows its table here: the same cards, the same tally and the same cat.</p>
+    <dl class="room" id="room">
+      <div><dt>bars open</dt><dd>{{.Room.Bars}}</dd></div>
+      <div><dt>agents</dt><dd>{{.Room.Agents}}</dd></div>
+      <div class="brewing"><dt>brewing</dt><dd>{{.Room.Brewing}}</dd></div>
+      <div class="ready"><dt>ready for you</dt><dd>{{.Room.Ready}}</dd></div>
+    </dl>
   </section>
 
   <div id="bars">
@@ -235,6 +268,7 @@
     {{$capy := eq .Cat.Kind "capybara"}}
     <article class="bar" data-name="{{.Name}}" aria-label="{{.Name}}'s bar">
       <header class="bar-head">
+        <span class="edge" aria-hidden="true">{{range .Cards}}<i class="{{.State}}" style="--c: {{color .Agent}}"></i>{{end}}</span>
         <span class="bar-name">☕ {{.Name}}</span>
         <span>awake {{span .Awake}}</span>
         <span class="tally">{{.Tally}}</span>
@@ -379,6 +413,8 @@
   const readyIds = (bar) => new Set([...bar.querySelectorAll(".card.ready")].map((c) => c.dataset.id));
   const names = (root) => [...root.querySelectorAll(".bar")].map((b) => b.dataset.name).join("\n");
   const start = () => { cats = [...document.querySelectorAll("#bars .bar")].map(makeCat); };
+  // Bars pour in: all of them on load, then each one that opens.
+  const pourIn = (bars) => bars.forEach((bar, i) => { bar.style.setProperty("--i", i); bar.classList.add("fresh"); });
 
   let last = performance.now();
   function frame(now) {
@@ -388,6 +424,7 @@
     requestAnimationFrame(frame);
   }
   start();
+  pourIn([...document.querySelectorAll("#bars .bar")]);
   if (!still) requestAnimationFrame(frame);
 
   document.addEventListener("click", async (event) => {
@@ -412,6 +449,12 @@
       const response = await fetch("/", { cache: "no-store" });
       if (!response.ok) return;
       const page = new DOMParser().parseFromString(await response.text(), "text/html");
+      const room = page.getElementById("room");
+      if (room) {
+        const before = [...document.querySelectorAll("#room dd")].map((dd) => dd.textContent);
+        room.querySelectorAll("dd").forEach((dd, i) => { if (dd.textContent !== before[i]) dd.classList.add("bump"); });
+        document.getElementById("room").replaceWith(room);
+      }
       for (const id of ["pod", "baristas"]) {
         const fresh = page.getElementById(id);
         if (fresh) document.getElementById(id).replaceWith(fresh);
@@ -419,7 +462,9 @@
       const fresh = page.getElementById("bars");
       const current = document.getElementById("bars");
       if (names(fresh) !== names(current)) {
+        const open = new Set(names(current).split("\n"));
         current.replaceWith(fresh);
+        pourIn([...fresh.querySelectorAll(".bar")].filter((bar) => !open.has(bar.dataset.name)));
         start();
         return;
       }

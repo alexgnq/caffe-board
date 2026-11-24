@@ -15,6 +15,7 @@ import (
 	"hash/fnv"
 	"html/template"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"regexp"
@@ -88,7 +89,13 @@ type barista struct {
 	Updates int
 }
 
+// room counts what's on every bar's table at once, for the line at the top.
+type room struct {
+	Bars, Agents, Brewing, Ready int
+}
+
 type pageData struct {
+	Room     room
 	Bars     []bar
 	Baristas []barista
 	Pod      string
@@ -302,6 +309,19 @@ func loadPage(ctx context.Context, data *pageData) error {
 			return err
 		}
 		data.Bars = append(data.Bars, item)
+		data.Room.Bars++
+		for _, c := range item.Cards {
+			if c.Kind != "session" || c.State == "served" {
+				continue
+			}
+			data.Room.Agents++
+			switch c.State {
+			case "brewing", "pouring":
+				data.Room.Brewing++
+			case "ready":
+				data.Room.Ready++
+			}
+		}
 	}
 	if err := rows.Err(); err != nil {
 		return err
@@ -326,12 +346,18 @@ func loadPage(ctx context.Context, data *pageData) error {
 }
 
 // boardURL is this page's address, for the command that points caffe here.
+// boardURL is the address caffe should use. A board on a real hostname sits
+// behind TLS, even when the proxy in front doesn't say so, and caffe can't
+// follow a redirect from http with an update. Local runs have no TLS.
 func boardURL(request *http.Request) string {
-	scheme := "http"
-	if request.TLS != nil || request.Header.Get("X-Forwarded-Proto") == "https" {
-		scheme = "https"
+	host := request.Host
+	if name, _, err := net.SplitHostPort(host); err == nil {
+		host = name
 	}
-	return scheme + "://" + request.Host
+	if request.TLS == nil && (host == "localhost" || strings.HasSuffix(host, ".local") || net.ParseIP(host) != nil) {
+		return "http://" + request.Host
+	}
+	return "https://" + request.Host
 }
 
 func handleIndex(writer http.ResponseWriter, request *http.Request) {
